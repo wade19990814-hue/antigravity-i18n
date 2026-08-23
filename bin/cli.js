@@ -41,6 +41,15 @@ function parseArgs(args) {
     let noKill = false;
     let force = false;
     let locale = DEFAULT_LOCALE;
+    const positionals = [];
+
+    const readValue = (index, option) => {
+        const value = args[index + 1];
+        if (!value || value.startsWith('-')) {
+            throw new Error(`${option} requires a value.`);
+        }
+        return value;
+    };
 
     for (let i = 0; i < args.length; i++) {
         const arg = args[i];
@@ -52,18 +61,32 @@ function parseArgs(args) {
             console.log(`v${pkg.version}`);
             process.exit(0);
         } else if (arg === '--app-dir') {
-            appDir = args[++i];
+            appDir = readValue(i, arg);
+            i += 1;
         } else if (arg === '--locale') {
-            locale = args[++i];
+            locale = readValue(i, arg);
+            i += 1;
         } else if (arg === '--no-restart') {
             restart = false;
         } else if (arg === '--no-kill') {
             noKill = true;
         } else if (arg === '--force') {
             force = true;
-        } else if (!arg.startsWith('-')) {
-            command = arg.toLowerCase();
+        } else if (arg.startsWith('-')) {
+            throw new Error(`Unknown option: ${arg}`);
+        } else {
+            positionals.push(arg);
         }
+    }
+
+    if (positionals.length > 1) {
+        throw new Error(`Unexpected arguments: ${positionals.slice(1).join(' ')}`);
+    }
+    if (positionals.length === 1) {
+        command = positionals[0].toLowerCase();
+    }
+    if (force && noKill) {
+        throw new Error('--force cannot be combined with --no-kill.');
     }
 
     return { command, appDir, restart, noKill, force, locale };
@@ -76,9 +99,8 @@ function describeLanguage(language) {
 }
 
 async function main() {
-    const { command, appDir, restart, noKill, force, locale } = parseArgs(process.argv.slice(2));
-
     try {
+        const { command, appDir, restart, noKill, force, locale } = parseArgs(process.argv.slice(2));
         if (command === 'locales') {
             console.log('\nBundled translation locales:');
             for (const code of listLocales()) {
@@ -126,4 +148,8 @@ async function main() {
     }
 }
 
-main();
+if (require.main === module) {
+    main();
+}
+
+module.exports = { parseArgs };

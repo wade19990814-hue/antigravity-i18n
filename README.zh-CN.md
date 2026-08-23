@@ -59,7 +59,7 @@ node bin/cli.js zh
   --app-dir <path>  手动指定 Antigravity 安装路径
   --locale <code>   指定语言包（默认 zh-CN）
   --no-restart      打补丁后不自动重启客户端
-  --no-kill         不自动关闭运行中的客户端（需手动提前退出）
+  --no-kill         仅在客户端已退出时继续，绝不结束进程
   --force           跳过等待，强制结束客户端进程
   -h, --help        显示帮助
   -v, --version     查看版本
@@ -71,7 +71,7 @@ node bin/cli.js zh
 
 1. **运行前保存工作**：修改客户端需要先退出应用。工具会自动等待应用正常退出并保存状态，建议运行前先保存好未完成的代码或对话。
 2. **官方版本更新**：Antigravity 自动更新后会覆盖补丁回到英文，更新完成后重新执行一次 `npx antigravity-zh zh` 即可。
-3. **备份文件**：首次运行会在应用的 `resources` 目录下生成 `app.asar.clean-backup`，这是还原英文的基准文件，请勿手动删除。
+3. **备份文件**：首次运行会在应用的 `resources` 目录下生成 `app.asar.clean-backup`；官方更新后会用当前未打补丁的归档刷新该备份。请勿手动删除。
 
 ---
 

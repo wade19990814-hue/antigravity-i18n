@@ -59,7 +59,7 @@ Options:
   --app-dir <path>  Specify custom Antigravity installation path
   --locale <code>   Select locale (default: zh-CN)
   --no-restart      Do not restart the app after patching
-  --no-kill         Do not automatically close the running app
+  --no-kill         Require the app to be stopped; never terminate it
   --force           Skip graceful wait and force-kill process
   -h, --help        Show help
   -v, --version     Show version
@@ -71,7 +71,7 @@ Options:
 
 1. **Save your work**: The tool waits up to 20 seconds for the app to exit cleanly and save state. It is recommended to save unfinished work before running.
 2. **Official updates**: Official updates overwrite `app.asar`. Simply run `npx antigravity-zh zh` again after updating.
-3. **Backup files**: The initial run creates `app.asar.clean-backup` in the `resources` directory as the baseline for restoration. Do not delete it manually.
+3. **Backup files**: The initial run creates `app.asar.clean-backup` in the `resources` directory, and a later official update refreshes it from the current unpatched archive. Do not delete it manually.
 
 ---
 

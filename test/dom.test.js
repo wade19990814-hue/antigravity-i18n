@@ -73,6 +73,17 @@ class FakeElement {
         this.attributes[name] = value;
     }
 
+    get isContentEditable() {
+        let current = this;
+        while (current) {
+            if (Object.prototype.hasOwnProperty.call(current.attributes, 'contenteditable')) {
+                return current.attributes.contenteditable !== 'false';
+            }
+            current = current.parentElement;
+        }
+        return false;
+    }
+
     // Understands only the selectors the engine uses: tag names, .classes
     // and [attr="value"].
     matches(selector) {
@@ -228,6 +239,8 @@ check('leaves skippable containers untouched', () => {
         ['div', { role: 'log' }],
         ['div', { role: 'terminal' }],
         ['div', { contenteditable: 'true' }],
+        ['div', { contenteditable: '' }],
+        ['div', { contenteditable: 'plaintext-only' }],
         ['div', { class: 'monaco-editor' }],
         ['div', { class: 'xterm' }],
         ['script', {}],
@@ -247,6 +260,15 @@ check('leaves skippable containers untouched', () => {
             'text inside <' + tag + '> was modified'
         );
     });
+});
+
+check('contenteditable=false does not suppress ordinary UI translation', () => {
+    const root = el('html');
+    const panel = el('div', { contenteditable: 'false' });
+    panel.append(txt(sampleKey));
+    root.append(panel);
+    loadEngine(root);
+    assert.strictEqual(panel.childNodes[0].nodeValue, sampleValue);
 });
 
 check('translates attributes but not text of skippable elements', () => {

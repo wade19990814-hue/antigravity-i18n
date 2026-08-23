@@ -1,7 +1,7 @@
 const path = require('path');
 const fs = require('fs');
 const os = require('os');
-const { execSync, execFileSync, spawn } = require('child_process');
+const { execFileSync, spawn } = require('child_process');
 
 // Name of the state marker written next to app.asar. It records what this tool
 // last did, so language detection never has to guess from archive internals.
@@ -76,9 +76,29 @@ function resolveAppPaths(customAppDir) {
         );
     }
 
+    appDir = path.resolve(appDir);
+    let appDirStat;
+    try {
+        appDirStat = fs.statSync(appDir);
+    } catch {
+        appDirStat = null;
+    }
+    if (!appDirStat?.isDirectory()) {
+        throw new Error(`Antigravity app directory is not a directory: ${appDir}`);
+    }
+
     let asarPath = path.join(appDir, 'resources', 'app.asar');
     if (!fs.existsSync(asarPath) && fs.existsSync(path.join(appDir, 'app.asar'))) {
         asarPath = path.join(appDir, 'app.asar');
+    }
+    let asarStat;
+    try {
+        asarStat = fs.statSync(asarPath);
+    } catch {
+        asarStat = null;
+    }
+    if (!asarStat?.isFile()) {
+        throw new Error(`Antigravity app.asar was not found or is not a file: ${asarPath}`);
     }
 
     const resourcesDir = path.dirname(asarPath);
@@ -154,22 +174,38 @@ function getToolVersion() {
  * @returns {boolean}
  */
 function isAntigravityRunning() {
-    try {
-        if (os.platform() === 'win32') {
-            const out = execSync('tasklist /FI "IMAGENAME eq Antigravity.exe" /NH', {
+    if (os.platform() === 'win32') {
+        try {
+            const out = execFileSync('tasklist.exe', ['/FI', 'IMAGENAME eq Antigravity.exe', '/NH'], {
                 encoding: 'utf8',
-                stdio: ['ignore', 'pipe', 'ignore']
+                stdio: ['ignore', 'pipe', 'ignore'],
+                shell: false
             });
             return /antigravity\.exe/i.test(out);
+        } catch {
+            return false;
         }
-        // -x matches the executable name only, so this never matches our own
-        // command line (which contains the string "antigravity-zh").
-        execSync('pgrep -x Antigravity || pgrep -x antigravity', {
-            stdio: ['ignore', 'pipe', 'ignore']
-        });
-        return true;
+    }
+
+    // -x matches the executable name only, so this never matches our own
+    // command line (which contains the string "antigravity-zh"). Each name is
+    // checked separately to keep process discovery shell-free.
+    for (const name of ['Antigravity', 'antigravity']) {
+        try {
+            execFileSync('pgrep', ['-x', name], { stdio: 'ignore', shell: false });
+            return true;
+        } catch {
+            // Try the next casing.
+        }
+    }
+    return false;
+}
+
+function tryExec(file, args) {
+    try {
+        execFileSync(file, args, { stdio: 'ignore', shell: false });
     } catch {
-        return false;
+        // The process may already have exited; the follow-up probe decides.
     }
 }
 
@@ -203,11 +239,12 @@ function stopAntigravityProcesses(options = {}) {
         try {
             if (platform === 'win32') {
                 // No /F: this posts a close request to the window.
-                execSync('taskkill /IM Antigravity.exe', { stdio: 'ignore' });
+                tryExec('taskkill.exe', ['/IM', 'Antigravity.exe']);
             } else if (platform === 'darwin') {
-                execSync('osascript -e \'quit app "Antigravity"\'', { stdio: 'ignore' });
+                tryExec('osascript', ['-e', 'quit app "Antigravity"']);
             } else {
-                execSync('pkill -TERM -x Antigravity || pkill -TERM -x antigravity', { stdio: 'ignore' });
+                tryExec('pkill', ['-TERM', '-x', 'Antigravity']);
+                tryExec('pkill', ['-TERM', '-x', 'antigravity']);
             }
         } catch {
             // The app may refuse or have no window; the wait below decides.
@@ -226,10 +263,10 @@ function stopAntigravityProcesses(options = {}) {
     // in-place app.asar rewrite would fail on a locked file.
     try {
         if (platform === 'win32') {
-            execSync('taskkill /F /IM Antigravity.exe /IM language_server.exe', { stdio: 'ignore' });
+            tryExec('taskkill.exe', ['/F', '/IM', 'Antigravity.exe']);
         } else {
-            execSync('pkill -9 -x Antigravity || pkill -9 -x antigravity || true', { stdio: 'ignore' });
-            execSync('pkill -9 -x language_server || true', { stdio: 'ignore' });
+            tryExec('pkill', ['-9', '-x', 'Antigravity']);
+            tryExec('pkill', ['-9', '-x', 'antigravity']);
         }
     } catch {
         // Ignore errors if the process exited between the check and the kill.
@@ -265,7 +302,12 @@ function launchAntigravity(appDir) {
                 });
                 child.unref();
             } else {
-                execSync('antigravity &', { stdio: 'ignore' });
+                const child = spawn('antigravity', [], {
+                    detached: true,
+                    stdio: 'ignore',
+                    shell: false
+                });
+                child.unref();
             }
         }
     } catch {

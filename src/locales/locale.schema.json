@@ -44,7 +44,7 @@
       "description": "Rules for strings containing runtime values (counts, durations, model names) that cannot be listed in 'text'.",
       "items": {
         "type": "object",
-        "required": ["pattern", "template"],
+        "required": ["pattern", "template", "sample"],
         "additionalProperties": false,
         "properties": {
           "id": {
@@ -57,8 +57,8 @@
           },
           "flags": {
             "type": "string",
-            "description": "Regex flags, typically 'i'.",
-            "pattern": "^[dgimsuvy]*$"
+            "description": "Non-stateful regex flags, typically 'i'. Global and sticky flags are rejected because dynamic rules need capture groups from one exact match.",
+            "pattern": "^[dimsuv]*$"
           },
           "template": {
             "type": "string",

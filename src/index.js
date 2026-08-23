@@ -6,6 +6,7 @@ const {
     resolveAppPaths,
     stopAntigravityProcesses,
     launchAntigravity,
+    isAntigravityRunning,
     readState,
     writeState
 } = require('./detector');
@@ -158,6 +159,59 @@ function getFormatTimestamp() {
     return `${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(d.getDate())}-${pad(d.getHours())}${pad(d.getMinutes())}${pad(d.getSeconds())}`;
 }
 
+function createUniqueBackupPath(resourcesDir, fileName) {
+    let candidate = path.join(resourcesDir, fileName);
+    let suffix = 1;
+    while (fs.existsSync(candidate)) {
+        candidate = path.join(resourcesDir, `${fileName}-${suffix}`);
+        suffix += 1;
+    }
+    return candidate;
+}
+
+/**
+ * Replace a file without copying directly over the live destination.
+ *
+ * The candidate is first copied and flushed beside the destination, then a
+ * same-volume rename swaps it into place. If preparation fails, the original
+ * file is untouched; if the rename fails, the staged file is cleaned up.
+ */
+function atomicReplaceFile(sourcePath, destinationPath) {
+    const destinationDir = path.dirname(destinationPath);
+    const stageDir = fs.mkdtempSync(path.join(destinationDir, '.antigravity-zh-stage-'));
+    const stagedPath = path.join(stageDir, path.basename(destinationPath));
+    let fd;
+    try {
+        fs.copyFileSync(sourcePath, stagedPath, fs.constants.COPYFILE_EXCL);
+        fd = fs.openSync(stagedPath, 'r+');
+        fs.fsyncSync(fd);
+        fs.closeSync(fd);
+        fd = null;
+        fs.renameSync(stagedPath, destinationPath);
+    } finally {
+        if (fd !== null && fd !== undefined) {
+            try { fs.closeSync(fd); } catch { /* Best effort. */ }
+        }
+        try { fs.rmSync(stageDir, { recursive: true, force: true }); } catch { /* Best effort. */ }
+    }
+}
+
+function ensureStoppedForModification(options = {}) {
+    if (options.force && options.noKill) {
+        throw new Error('--force cannot be combined with --no-kill.');
+    }
+    if (!options.noKill) {
+        closeAntigravityOrThrow(options);
+        return;
+    }
+    if (isAntigravityRunning()) {
+        throw new Error(
+            'Antigravity is still running. --no-kill never terminates it; close the app first and re-run.'
+        );
+    }
+    console.log('  Antigravity is already stopped; --no-kill will not terminate processes.');
+}
+
 /**
  * Close Antigravity before app.asar is rewritten, preferring a clean exit.
  *
@@ -239,6 +293,23 @@ function detectPatchInArchive(asarPath) {
     }
 }
 
+function readArchiveIdentity(asarPath) {
+    try {
+        const asar = require('@electron/asar');
+        const pkg = JSON.parse(asar.extractFile(asarPath, 'package.json').toString('utf8'));
+        if (typeof pkg.name !== 'string' || typeof pkg.version !== 'string') {
+            return null;
+        }
+        return { name: pkg.name, version: pkg.version };
+    } catch {
+        return null;
+    }
+}
+
+function sameArchiveRelease(left, right) {
+    return !left || Boolean(right && left.name === right.name && left.version === right.version);
+}
+
 function getStatus(options = {}) {
     const { appDir, asarPath, cleanBackupPath, statePath } = resolveAppPaths(options.appDir);
     const hasCleanBackup = fs.existsSync(cleanBackupPath);
@@ -282,7 +353,7 @@ function getStatus(options = {}) {
  * @param {string} resourcesDir
  * @returns {string|null} Absolute path to a verified-clean archive.
  */
-function findPristineArchive(resourcesDir) {
+function findPristineArchive(resourcesDir, expectedIdentity) {
     let names;
     try {
         names = fs.readdirSync(resourcesDir)
@@ -299,11 +370,58 @@ function findPristineArchive(resourcesDir) {
 
     for (const name of names) {
         const candidate = path.join(resourcesDir, name);
-        if (detectPatchInArchive(candidate) === false) {
+        if (detectPatchInArchive(candidate) === false
+            && sameArchiveRelease(expectedIdentity, readArchiveIdentity(candidate))) {
             return candidate;
         }
     }
     return null;
+}
+
+function ensureCleanBackupForPatch(resourcesDir, asarPath, cleanBackupPath, currentPatchState, expectedIdentity) {
+    if (currentPatchState === false) {
+        const action = fs.existsSync(cleanBackupPath) ? 'Refreshing' : 'Creating';
+        console.log(`${action} original clean backup: ${cleanBackupPath}`);
+        // An official update can leave an older clean backup beside a new
+        // app.asar. Refreshing from the current verified-unpatched archive keeps
+        // a later `en` restore on the same Antigravity release.
+        atomicReplaceFile(asarPath, cleanBackupPath);
+        return;
+    }
+
+    if (fs.existsSync(cleanBackupPath)
+        && detectPatchInArchive(cleanBackupPath) === false
+        && sameArchiveRelease(expectedIdentity, readArchiveIdentity(cleanBackupPath))) {
+        return;
+    }
+
+    const pristine = findPristineArchive(resourcesDir, expectedIdentity);
+    if (!pristine) {
+        throw new Error(
+            'app.asar is already patched and no verified pristine copy was found, so the original '
+            + 'English build cannot be preserved. Reinstall or update Antigravity to restore a clean '
+            + 'app.asar, then run this tool again.'
+        );
+    }
+    console.log(`Recovered pristine archive from ${path.basename(pristine)}`);
+    atomicReplaceFile(pristine, cleanBackupPath);
+}
+
+function ensureRestorableCleanBackup(resourcesDir, cleanBackupPath, expectedIdentity) {
+    if (fs.existsSync(cleanBackupPath)
+        && detectPatchInArchive(cleanBackupPath) === false
+        && sameArchiveRelease(expectedIdentity, readArchiveIdentity(cleanBackupPath))) {
+        return;
+    }
+    const pristine = findPristineArchive(resourcesDir, expectedIdentity);
+    if (!pristine) {
+        throw new Error(
+            'No verified pristine English app.asar was found. Reinstall or update Antigravity to '
+            + 'restore the official build, then run this tool again.'
+        );
+    }
+    console.log(`Using verified original backup: ${path.basename(pristine)}`);
+    atomicReplaceFile(pristine, cleanBackupPath);
 }
 
 async function switchToChinese(options = {}) {
@@ -315,40 +433,28 @@ async function switchToChinese(options = {}) {
     const preloadFragment = buildPreloadFragment(locale);
     const menuFragment = buildMenuFragment(locale);
 
-    if (!options.noKill) {
-        closeAntigravityOrThrow(options);
+    const initialPatchState = detectPatchInArchive(asarPath);
+    if (initialPatchState === null) {
+        throw new Error(`Could not read Antigravity archive: ${asarPath}`);
     }
+    const expectedIdentity = readArchiveIdentity(asarPath);
+    if (!expectedIdentity || expectedIdentity.name !== 'antigravity') {
+        throw new Error(`Could not verify Antigravity archive identity: ${asarPath}`);
+    }
+    ensureStoppedForModification(options);
 
-    // Ensure clean backup exists
-    if (!fs.existsSync(cleanBackupPath)) {
-        // Only a pristine archive may become the clean backup. If the current
-        // app.asar is already patched (backup deleted, or patched by an older
-        // version), copying it here would silently poison the restore path and
-        // make `en` restore a Chinese build forever.
-        if (detectPatchInArchive(asarPath) === true) {
-            // An earlier run may still have left a pristine timestamped backup.
-            const pristine = findPristineArchive(resourcesDir);
-            if (!pristine) {
-                throw new Error(
-                    'app.asar is already patched and no pristine copy was found, so the original '
-                    + 'English build cannot be preserved. Reinstall or update Antigravity to restore '
-                    + 'a clean app.asar, then run this tool again.'
-                );
-            }
-            console.log(`Recovered pristine archive from ${path.basename(pristine)}`);
-            fs.copyFileSync(pristine, cleanBackupPath);
-        } else {
-            console.log(`Creating original clean backup: ${cleanBackupPath}`);
-            fs.copyFileSync(asarPath, cleanBackupPath);
-        }
+    const currentPatchState = detectPatchInArchive(asarPath);
+    if (currentPatchState === null) {
+        throw new Error(`Could not read Antigravity archive after shutdown: ${asarPath}`);
     }
+    ensureCleanBackupForPatch(resourcesDir, asarPath, cleanBackupPath, currentPatchState, expectedIdentity);
 
     // Also create timestamped backup
     const stamp = getFormatTimestamp();
-    const backupPath = path.join(resourcesDir, `app.asar.bak-${stamp}`);
+    const backupPath = createUniqueBackupPath(resourcesDir, `app.asar.bak-${stamp}`);
     fs.copyFileSync(asarPath, backupPath);
 
-    const tmpRoot = path.join(os.tmpdir(), `antigravity-zh-patch-${stamp}`);
+    const tmpRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'antigravity-zh-patch-'));
     const extractDir = path.join(tmpRoot, 'app');
     const packedPath = path.join(tmpRoot, 'app.asar');
 
@@ -430,8 +536,14 @@ if (!electron_1.app.commandLine.hasSwitch('lang')) {
         // 5. Repack asar
         console.log('Packing patched app.asar...');
         await packAsar(extractDir, packedPath);
+        if (detectPatchInArchive(packedPath) !== true) {
+            throw new Error('Packed app.asar verification failed: localization markers were not found.');
+        }
+        if (!sameArchiveRelease(expectedIdentity, readArchiveIdentity(packedPath))) {
+            throw new Error('Packed app.asar verification failed: application identity changed.');
+        }
 
-        fs.copyFileSync(packedPath, asarPath);
+        atomicReplaceFile(packedPath, asarPath);
         writeState(statePath, 'zh', asarPath);
         console.log(`✓ Successfully switched to Chinese! (app.asar updated)`);
         console.log(`  Backup saved at: ${backupPath}`);
@@ -452,33 +564,35 @@ if (!electron_1.app.commandLine.hasSwitch('lang')) {
 function switchToEnglish(options = {}) {
     const { appDir, resourcesDir, asarPath, cleanBackupPath, statePath } = resolveAppPaths(options.appDir);
 
-    if (!fs.existsSync(cleanBackupPath)) {
-        // Fall back to a timestamped backup, but only one that is verified to be
-        // unpatched. Picking the alphabetically first backup could restore a
-        // Chinese build, leaving the user stuck with no way back to English.
-        const pristine = findPristineArchive(resourcesDir);
-        if (!pristine) {
-            throw new Error(
-                'No pristine English app.asar was found (app.asar.clean-backup is missing and '
-                + 'no unpatched app.asar.bak-* exists). Reinstall or update Antigravity to restore '
-                + 'the official build.'
-            );
-        }
-        console.log(`Using verified original backup: ${path.basename(pristine)}`);
-        fs.copyFileSync(pristine, cleanBackupPath);
+    const currentPatchState = detectPatchInArchive(asarPath);
+    if (currentPatchState === null) {
+        throw new Error(`Could not read Antigravity archive: ${asarPath}`);
+    }
+    if (currentPatchState === false) {
+        // After an official update the app is already English, while the clean
+        // backup may still belong to the previous release. Refresh the backup
+        // and avoid needlessly stopping or rewriting the running application.
+        console.log('Antigravity is already using the official English archive.');
+        atomicReplaceFile(asarPath, cleanBackupPath);
+        writeState(statePath, 'en', asarPath);
+        return;
     }
 
-    if (!options.noKill) {
-        closeAntigravityOrThrow(options);
+    const expectedIdentity = readArchiveIdentity(asarPath);
+    if (!expectedIdentity || expectedIdentity.name !== 'antigravity') {
+        throw new Error(`Could not verify Antigravity archive identity: ${asarPath}`);
     }
+
+    ensureRestorableCleanBackup(resourcesDir, cleanBackupPath, expectedIdentity);
+    ensureStoppedForModification(options);
 
     // Create a safety backup of current state
     const stamp = getFormatTimestamp();
-    const backupPath = path.join(resourcesDir, `app.asar.bak-before-restore-${stamp}`);
+    const backupPath = createUniqueBackupPath(resourcesDir, `app.asar.bak-before-restore-${stamp}`);
     fs.copyFileSync(asarPath, backupPath);
 
     console.log('Restoring original clean app.asar...');
-    fs.copyFileSync(cleanBackupPath, asarPath);
+    atomicReplaceFile(cleanBackupPath, asarPath);
     writeState(statePath, 'en', asarPath);
     console.log('✓ Successfully switched back to official English version!');
 
@@ -495,6 +609,11 @@ module.exports = {
     // Exported for tests: re-patching must be byte-stable, which is easier to
     // assert directly than by repacking a real archive.
     injectFragment,
+    atomicReplaceFile,
+    createUniqueBackupPath,
+    ensureCleanBackupForPatch,
+    ensureRestorableCleanBackup,
+    readArchiveIdentity,
     BLOCK_BEGIN,
     BLOCK_END,
     LEGACY_ENGINE_START_MARKERS,

@@ -11,7 +11,8 @@
     "en": "node bin/cli.js en",
     "status": "node bin/cli.js status",
     "locales": "node bin/cli.js locales",
-    "test": "node --check bin/cli.js && node --check src/index.js && node --check src/detector.js && node --check src/locale.js && node test/locale.test.js && node test/dom.test.js && node test/inject.test.js"
+    "test": "node --check bin/cli.js && node --check src/index.js && node --check src/detector.js && node --check src/locale.js && node test/locale.test.js && node test/dom.test.js && node test/inject.test.js && node test/security.test.js",
+    "prepublishOnly": "npm test"
   },
   "keywords": [
     "antigravity",

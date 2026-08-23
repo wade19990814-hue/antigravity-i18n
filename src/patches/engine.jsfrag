@@ -45,7 +45,6 @@ const agSkipSelector = [
     'pre',
     'kbd',
     'samp',
-    '[contenteditable="true"]',
     '[role="textbox"]',
     '[role="log"]',
     '[role="terminal"]',
@@ -187,7 +186,10 @@ function translateString(value) {
 // and defers *what* to translateString() above.
 // ---------------------------------------------------------------------------
 function isSkippableElement(element) {
-    return Boolean(element?.closest?.(agSkipSelector));
+    // isContentEditable covers inherited editability plus values such as an
+    // empty attribute or "plaintext-only". Matching only
+    // [contenteditable="true"] can rewrite text the user is actively editing.
+    return Boolean(element?.isContentEditable || element?.closest?.(agSkipSelector));
 }
 function shouldTranslateTextNode(node) {
     const parent = node.parentElement;

@@ -4,6 +4,7 @@ const path = require('path');
 const LOCALES_DIR = path.join(__dirname, 'locales');
 const PATCHES_DIR = path.join(__dirname, 'patches');
 const DEFAULT_LOCALE = 'zh-CN';
+const LOCALE_CODE_RE = /^[A-Za-z]{2,3}(?:-[A-Za-z0-9]{2,8})*$/;
 
 /**
  * List the locale codes shipped with this package.
@@ -13,7 +14,7 @@ const DEFAULT_LOCALE = 'zh-CN';
 function listLocales() {
     try {
         return fs.readdirSync(LOCALES_DIR)
-            .filter((name) => name.endsWith('.json') && !name.startsWith('locale.schema'))
+            .filter((name) => LOCALE_CODE_RE.test(name.replace(/\.json$/, '')) && name.endsWith('.json'))
             .map((name) => name.replace(/\.json$/, ''))
             .sort();
     } catch {
@@ -29,11 +30,12 @@ function listLocales() {
  * @throws {Error} When the locale is missing or structurally invalid.
  */
 function loadLocale(code = DEFAULT_LOCALE) {
-    const file = path.join(LOCALES_DIR, `${code}.json`);
-    if (!fs.existsSync(file)) {
-        const available = listLocales().join(', ') || 'none';
-        throw new Error(`Unknown locale '${code}'. Available locales: ${available}`);
+    const availableLocales = listLocales();
+    if (typeof code !== 'string' || !LOCALE_CODE_RE.test(code) || !availableLocales.includes(code)) {
+        const available = availableLocales.join(', ') || 'none';
+        throw new Error(`Unknown locale '${String(code)}'. Available locales: ${available}`);
     }
+    const file = path.join(LOCALES_DIR, `${code}.json`);
 
     let locale;
     try {
@@ -56,20 +58,106 @@ function loadLocale(code = DEFAULT_LOCALE) {
  * @param {string} code
  * @param {object} locale
  */
+function isPlainObject(value) {
+    return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
+}
+
+function validateStringMap(code, label, value, options = {}) {
+    if (!isPlainObject(value)) {
+        throw new Error(`Locale '${code}': '${label}' must be an object.`);
+    }
+    for (const [key, translated] of Object.entries(value)) {
+        if (!options.allowEmptyKey && !key) {
+            throw new Error(`Locale '${code}': '${label}' contains an empty key.`);
+        }
+        if (key !== key.trim()) {
+            throw new Error(`Locale '${code}': '${label}' key '${key}' has surrounding whitespace.`);
+        }
+        if (typeof translated !== 'string' || (!options.allowEmptyValue && translated.length === 0)) {
+            throw new Error(`Locale '${code}': '${label}' value for '${key}' must be a non-empty string.`);
+        }
+    }
+}
+
+function countCaptureGroups(regex) {
+    const flags = regex.flags.replace(/[gy]/g, '');
+    return new RegExp(`${regex.source}|`, flags).exec('').length - 1;
+}
+
+function validateTemplateGroups(code, label, regex, template) {
+    const groupCount = countCaptureGroups(regex);
+    for (const match of template.matchAll(/\{(\d+)\}/g)) {
+        const index = Number(match[1]);
+        if (index < 1 || index > groupCount) {
+            throw new Error(
+                `Locale '${code}': ${label} template references {${index}} but the pattern has ${groupCount} capture group(s).`
+            );
+        }
+    }
+    return groupCount;
+}
+
 function validateLocale(code, locale) {
-    if (!locale || typeof locale !== 'object') {
+    if (!isPlainObject(locale)) {
         throw new Error(`Locale '${code}' must be a JSON object.`);
     }
-    if (!locale.text || typeof locale.text !== 'object') {
+    if (!isPlainObject(locale.text)) {
         throw new Error(`Locale '${code}' is missing a 'text' dictionary.`);
     }
     // The 'language' field becomes <html lang> and the CLI's reported code, so a
     // copy-pasted locale file whose field still names the source language would
     // silently mislabel the app.
-    if (locale.language && locale.language !== code) {
+    if (locale.language !== code) {
         throw new Error(
             `Locale '${code}': 'language' is '${locale.language}' but the file is named '${code}.json'; they must match.`
         );
+    }
+    if (typeof locale.name !== 'string' || !locale.name.trim()) {
+        throw new Error(`Locale '${code}': 'name' must be a non-empty string.`);
+    }
+
+    validateStringMap(code, 'text', locale.text);
+    if (locale.menu !== undefined) validateStringMap(code, 'menu', locale.menu);
+    if (locale.punctuation !== undefined) {
+        validateStringMap(code, 'punctuation', locale.punctuation, { allowEmptyKey: true, allowEmptyValue: true });
+    }
+    if (locale.punctuationSkipSuffixes !== undefined
+        && (!Array.isArray(locale.punctuationSkipSuffixes)
+            || locale.punctuationSkipSuffixes.some((item) => typeof item !== 'string'))) {
+        throw new Error(`Locale '${code}': 'punctuationSkipSuffixes' must be an array of strings.`);
+    }
+
+    if (locale.valueMaps !== undefined) {
+        if (!isPlainObject(locale.valueMaps)) {
+            throw new Error(`Locale '${code}': 'valueMaps' must be an object.`);
+        }
+        for (const [name, map] of Object.entries(locale.valueMaps)) {
+            validateStringMap(code, `valueMaps.${name}`, map, { allowEmptyKey: true, allowEmptyValue: true });
+        }
+    }
+
+    if (locale.valueRules !== undefined) {
+        if (!isPlainObject(locale.valueRules)) {
+            throw new Error(`Locale '${code}': 'valueRules' must be an object.`);
+        }
+        for (const [name, rules] of Object.entries(locale.valueRules)) {
+            if (!Array.isArray(rules)) {
+                throw new Error(`Locale '${code}': 'valueRules.${name}' must be an array.`);
+            }
+            rules.forEach((rule, index) => {
+                const label = `value rule '${name}' #${index + 1}`;
+                if (!isPlainObject(rule) || typeof rule.pattern !== 'string' || typeof rule.template !== 'string') {
+                    throw new Error(`Locale '${code}': ${label} needs both 'pattern' and 'template' strings.`);
+                }
+                let compiled;
+                try {
+                    compiled = new RegExp(rule.pattern, rule.flags || 'g');
+                } catch (err) {
+                    throw new Error(`Locale '${code}': ${label} has an invalid regex: ${err.message}`);
+                }
+                validateTemplateGroups(code, label, compiled, rule.template);
+            });
+        }
     }
 
     const patterns = locale.patterns || [];
@@ -82,6 +170,18 @@ function validateLocale(code, locale) {
         const label = rule && rule.id ? `pattern '${rule.id}'` : `pattern #${index + 1}`;
         if (!rule || typeof rule.pattern !== 'string' || typeof rule.template !== 'string') {
             throw new Error(`Locale '${code}': ${label} needs both 'pattern' and 'template' strings.`);
+        }
+        if (typeof rule.sample !== 'string' || !rule.sample) {
+            throw new Error(`Locale '${code}': ${label} needs a non-empty 'sample' string.`);
+        }
+        if (!rule.pattern.startsWith('^') || !rule.pattern.endsWith('$')) {
+            throw new Error(`Locale '${code}': ${label} must be anchored with ^ and $.`);
+        }
+        if (typeof rule.flags !== 'undefined' && typeof rule.flags !== 'string') {
+            throw new Error(`Locale '${code}': ${label} flags must be a string.`);
+        }
+        if (/[gy]/.test(rule.flags || '')) {
+            throw new Error(`Locale '${code}': ${label} cannot use stateful 'g' or 'y' flags.`);
         }
         if (rule.id) {
             if (seen.has(rule.id)) {
@@ -99,22 +199,31 @@ function validateLocale(code, locale) {
 
         // A template placeholder beyond the pattern's capture-group count would
         // silently render as an empty string in the UI.
-        const groupCount = new RegExp(`${compiled.source}|`).exec('').length - 1;
-        for (const match of rule.template.matchAll(/\{(\d+)\}/g)) {
-            const index2 = Number(match[1]);
-            if (index2 < 1 || index2 > groupCount) {
-                throw new Error(
-                    `Locale '${code}': ${label} template references {${index2}} but the pattern has ${groupCount} capture group(s).`
-                );
-            }
+        const groupCount = validateTemplateGroups(code, label, compiled, rule.template);
+        if (!compiled.test(rule.sample)) {
+            throw new Error(`Locale '${code}': ${label} does not match its own sample.`);
         }
 
-        for (const name of Object.values(rule.replace || {})) {
-            const known = (locale.valueMaps && name in locale.valueMaps)
-                || (locale.valueRules && name in locale.valueRules);
+        if (rule.replace !== undefined && !isPlainObject(rule.replace)) {
+            throw new Error(`Locale '${code}': ${label} 'replace' must be an object.`);
+        }
+        for (const [capture, name] of Object.entries(rule.replace || {})) {
+            const captureIndex = Number(capture);
+            if (!Number.isInteger(captureIndex) || captureIndex < 1 || captureIndex > groupCount) {
+                throw new Error(`Locale '${code}': ${label} has invalid replace capture '${capture}'.`);
+            }
+            const known = (isPlainObject(locale.valueMaps)
+                && Object.prototype.hasOwnProperty.call(locale.valueMaps, name))
+                || (isPlainObject(locale.valueRules)
+                    && Object.prototype.hasOwnProperty.call(locale.valueRules, name));
             if (!known) {
                 throw new Error(`Locale '${code}': ${label} references unknown value map '${name}'.`);
             }
+        }
+        if (rule.trimGroups !== undefined
+            && (!Array.isArray(rule.trimGroups)
+                || rule.trimGroups.some((group) => !Number.isInteger(group) || group < 1 || group > groupCount))) {
+            throw new Error(`Locale '${code}': ${label} has an invalid 'trimGroups' capture index.`);
         }
     });
 }
