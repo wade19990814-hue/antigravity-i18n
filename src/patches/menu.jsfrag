@@ -1,9 +1,9 @@
-/* antigravity-zh:begin */
+/* polygravity:begin */
 /**
  * Native application menu translation. Locale neutral: the label map is
  * injected as MENU_DATA when the fragment is built.
  *
- * Delimited by antigravity-zh:begin/end so a re-run replaces the whole block
+ * Delimited by polygravity:begin/end so a re-run replaces the whole block
  * rather than appending another copy of this comment.
  */
 function translateMenu(menu) {
@@ -17,4 +17,4 @@ function translateMenu(menu) {
     };
     menu.items.forEach(visit);
 }
-/* antigravity-zh:end */
+/* polygravity:end */

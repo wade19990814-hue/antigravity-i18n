@@ -10,8 +10,7 @@
 const assert = require('assert');
 const {
     injectFragment,
-    BLOCK_BEGIN,
-    BLOCK_END,
+    BLOCK_SENTINELS,
     LEGACY_ENGINE_START_MARKERS,
     LEGACY_MENU_START_MARKER,
     UPDATER_ANCHOR
@@ -27,6 +26,11 @@ function check(name, fn) {
         console.error('  FAIL ' + name + ': ' + err.message);
     }
 }
+
+const [BLOCK_BEGIN, BLOCK_END] = BLOCK_SENTINELS[0];
+// The sentinel pair used before the package was renamed. Blocks written by that
+// release must still be replaced rather than left beside the new one.
+const [OLD_BEGIN, OLD_END] = BLOCK_SENTINELS[BLOCK_SENTINELS.length - 1];
 
 const FRAGMENT = [BLOCK_BEGIN, '/** injected doc comment */', 'function translateMenu(menu) { return 1; }', BLOCK_END].join('\n');
 const MENU_LEGACY = { startMarkers: [LEGACY_MENU_START_MARKER] };
@@ -92,6 +96,28 @@ check('an unterminated sentinel does not truncate the file', () => {
     const out = injectFragment(damaged, FRAGMENT, ENGINE_LEGACY, UPDATER_ANCHOR);
     assert.ok(out.includes('head();'), 'leading code was lost');
     assert.ok(out.includes(UPDATER_ANCHOR), 'anchor was lost');
+});
+
+check('a block written under the previous package name is replaced in place', () => {
+    assert.notStrictEqual(OLD_BEGIN, BLOCK_BEGIN, 'test needs a distinct legacy sentinel');
+    const oldFragment = [OLD_BEGIN, '/** old engine */', 'const AG_LOCALE = {"language":"zh-CN"};', OLD_END].join('\n');
+    const source = 'head();\n\n' + oldFragment + '\n\n' + UPDATER_ANCHOR + ' x: 1 };\ntail();\n';
+    const out = injectFragment(source, FRAGMENT, ENGINE_LEGACY, UPDATER_ANCHOR);
+    assert.ok(!out.includes(OLD_BEGIN), 'legacy sentinel survived');
+    assert.ok(!out.includes('old engine'), 'legacy block body survived');
+    assert.strictEqual(countBlocks(out), 1);
+    assert.ok(out.includes('head();') && out.includes('tail();'), 'surrounding code was lost');
+    assert.ok(out.indexOf(BLOCK_BEGIN) < out.indexOf(UPDATER_ANCHOR), 'block must precede the anchor');
+    assert.strictEqual(injectFragment(out, FRAGMENT, ENGINE_LEGACY, UPDATER_ANCHOR), out, 'not idempotent after rename upgrade');
+});
+
+check('a mixed file with both sentinel generations collapses to one block', () => {
+    const oldFragment = [OLD_BEGIN, '/** old engine */', 'stale();', OLD_END].join('\n');
+    const source = 'head();\n\n' + oldFragment + '\n\n' + FRAGMENT + '\n\n' + UPDATER_ANCHOR + ' x: 1 };\n';
+    const out = injectFragment(source, FRAGMENT, ENGINE_LEGACY, UPDATER_ANCHOR);
+    assert.strictEqual(countBlocks(out), 1);
+    assert.ok(!out.includes('stale();'), 'legacy body survived');
+    assert.ok(!out.includes(OLD_BEGIN), 'legacy sentinel survived');
 });
 
 if (failures > 0) {

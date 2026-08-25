@@ -4,6 +4,7 @@
   "name": "简体中文",
   "englishName": "Simplified Chinese",
   "htmlLang": "zh-CN",
+  "dir": "ltr",
   "punctuation": {
     ":": "：",
     "?": "？",
@@ -807,7 +808,6 @@
     "including": "包括",
     "Delete": "删除",
     "Delete plugin": "删除插件",
-    "Delete 项目": "删除项目",
     "Edit project name": "编辑项目名称",
     "Full machine": "完全机器访问",
     "Inherit General": "继承常规设置",

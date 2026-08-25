@@ -1,46 +1,59 @@
 #!/usr/bin/env node
 
-const { switchToChinese, switchToEnglish, getStatus } = require('../src/index');
-const { DEFAULT_LOCALE, listLocales, loadLocale } = require('../src/locale');
+const { applyLocale, restoreOfficial, getStatus } = require('../src/index');
+const { DEFAULT_LOCALE, describeLocale, listLocales, loadLocale } = require('../src/locale');
+
+// Language-specific shorthands kept from the pre-rename CLI so existing scripts
+// and documented one-liners keep working. Each maps onto the generic verbs.
+const APPLY_ALIASES = new Map([
+    ['apply', null],
+    ['zh', 'zh-CN'],
+    ['cn', 'zh-CN'],
+    ['chinese', 'zh-CN']
+]);
+const RESTORE_ALIASES = new Set(['restore', 'en', 'english', 'official']);
 
 function printHelp() {
     console.log(`
-Antigravity Localization CLI (antigravity-zh)
-One-command language switcher for Antigravity Desktop App (Windows / Linux / macOS)
+Polygravity - Antigravity Desktop App localization CLI
+Applies a bundled language pack to Antigravity and restores the official build.
 
 Usage:
-  npx antigravity-zh <command> [options]
+  npx polygravity <command> [options]
   node bin/cli.js <command> [options]
 
 Commands:
-  zh                Switch Antigravity UI to Simplified Chinese (简体中文)
-  en                Restore official English version (还原英文官方原版)
-  status            Show current localization status and app path
-  locales           List the translation locales bundled with this package
+  apply             Install a language pack (choose it with --locale)
+  restore           Restore the official untranslated app
+  status            Show the active language and app path
+  locales           List the bundled language packs
 
 Options:
-  --app-dir <path>  Specify custom installation directory of Antigravity
-  --locale <code>   Translation locale to apply (default: zh-CN; see the locales command)
-  --no-restart      Do not restart Antigravity automatically after patching
-  --no-kill         Do not stop running Antigravity processes (close it yourself first)
-  --force           Skip the graceful-close wait and terminate Antigravity immediately
+  --app-dir <path>  Installation directory of Antigravity
+  --locale <code>   Language pack to install (default: ${DEFAULT_LOCALE})
+  --no-restart      Do not restart Antigravity after patching
+  --no-kill         Require Antigravity to be closed already; never terminate it
+  --force           Terminate Antigravity immediately instead of waiting
   -h, --help        Show this help message
   -v, --version     Show package version
 
 Examples:
-  npx antigravity-zh zh
-  npx antigravity-zh en
-  node bin/cli.js zh --app-dir "C:\\Users\\YourName\\AppData\\Local\\Programs\\antigravity"
+  npx polygravity apply --locale zh-CN
+  npx polygravity restore
+  npx polygravity locales
+  node bin/cli.js apply --app-dir "C:\\Users\\YourName\\AppData\\Local\\Programs\\antigravity"
+
+Shorthands: 'zh' applies zh-CN and 'en' restores the official build.
 `);
 }
 
 function parseArgs(args) {
-    let command = 'zh';
+    let command = 'apply';
     let appDir = null;
     let restart = true;
     let noKill = false;
     let force = false;
-    let locale = DEFAULT_LOCALE;
+    let locale = null;
     const positionals = [];
 
     const readValue = (index, option) => {
@@ -89,20 +102,48 @@ function parseArgs(args) {
         throw new Error('--force cannot be combined with --no-kill.');
     }
 
-    return { command, appDir, restart, noKill, force, locale };
+    // A shorthand names its own locale, so combining it with a different
+    // --locale would be ambiguous about which language to install.
+    const aliasLocale = APPLY_ALIASES.get(command);
+    if (aliasLocale && locale && locale !== aliasLocale) {
+        throw new Error(`Command '${command}' already means --locale ${aliasLocale}; drop one of them.`);
+    }
+
+    return {
+        command,
+        appDir,
+        restart,
+        noKill,
+        force,
+        locale: locale || aliasLocale || DEFAULT_LOCALE
+    };
 }
 
-function describeLanguage(language) {
-    if (language === 'zh') return '简体中文 (zh-CN)';
-    if (language === 'en') return 'English (Official)';
-    return 'Unknown (could not read app.asar)';
+/**
+ * Render the detected language for the status output.
+ *
+ * @param {string} language Locale code, 'en', or 'unknown'.
+ * @param {string|null} localeName Display name read from the patched archive.
+ */
+function describeLanguage(language, localeName) {
+    if (!language || language === 'unknown') {
+        return 'Unknown (could not read app.asar)';
+    }
+    if (language === 'en') {
+        return 'English (official, unpatched)';
+    }
+    // The archive names its own language; a bundled pack can supply the label
+    // for an install whose archive predates the locale header.
+    const name = localeName || describeLocale(language);
+    return name ? `${name} (${language})` : language;
 }
 
 async function main() {
     try {
         const { command, appDir, restart, noKill, force, locale } = parseArgs(process.argv.slice(2));
+
         if (command === 'locales') {
-            console.log('\nBundled translation locales:');
+            console.log('\nBundled language packs:');
             for (const code of listLocales()) {
                 const data = loadLocale(code);
                 const entries = Object.keys(data.text || {}).length;
@@ -110,7 +151,7 @@ async function main() {
                 const isDefault = code === DEFAULT_LOCALE ? '  (default)' : '';
                 console.log(`  ${code.padEnd(8)} ${data.name || ''} - ${entries} entries, ${patterns} dynamic rules${isDefault}`);
             }
-            console.log('\nApply one with: npx antigravity-zh zh --locale <code>\n');
+            console.log('\nApply one with: npx polygravity apply --locale <code>\n');
             return;
         }
 
@@ -119,7 +160,7 @@ async function main() {
             console.log('\n--- Antigravity Localization Status ---');
             console.log(`App Directory:    ${status.appDir}`);
             console.log(`ASAR File:        ${status.asarPath}`);
-            console.log(`Current Language: ${describeLanguage(status.currentLanguage)}`);
+            console.log(`Current Language: ${describeLanguage(status.currentLanguage, status.localeName)}`);
             console.log(`Clean Backup:     ${status.hasCleanBackup ? 'Available (Ready for 1-click restore)' : 'Not yet created'}`);
             if (status.lastPatchedAt) {
                 console.log(`Last Switched:    ${status.lastPatchedAt}`);
@@ -131,12 +172,13 @@ async function main() {
             return;
         }
 
-        if (command === 'zh' || command === 'cn' || command === 'chinese') {
-            console.log('\n>>> Switching Antigravity to Chinese (简体中文)...');
-            await switchToChinese({ appDir, restart, noKill, force, locale });
-        } else if (command === 'en' || command === 'english' || command === 'restore') {
-            console.log('\n>>> Restoring official English version...');
-            switchToEnglish({ appDir, restart, noKill, force });
+        if (APPLY_ALIASES.has(command)) {
+            const pack = loadLocale(locale);
+            console.log(`\n>>> Applying ${pack.name} (${pack.language}) to Antigravity...`);
+            await applyLocale({ appDir, restart, noKill, force, locale });
+        } else if (RESTORE_ALIASES.has(command)) {
+            console.log('\n>>> Restoring the official Antigravity build...');
+            restoreOfficial({ appDir, restart, noKill, force });
         } else {
             console.error(`\nUnknown command: "${command}"`);
             printHelp();
@@ -152,4 +194,4 @@ if (require.main === module) {
     main();
 }
 
-module.exports = { parseArgs };
+module.exports = { parseArgs, describeLanguage };

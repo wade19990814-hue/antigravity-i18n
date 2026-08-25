@@ -5,7 +5,11 @@ const { execFileSync, spawn } = require('child_process');
 
 // Name of the state marker written next to app.asar. It records what this tool
 // last did, so language detection never has to guess from archive internals.
-const STATE_MARKER_NAME = 'antigravity-zh-state.json';
+const STATE_MARKER_NAME = 'polygravity-state.json';
+
+// Marker name used before the rename. It is still read so an install patched by
+// an earlier release keeps its recorded language instead of reporting unknown.
+const LEGACY_STATE_MARKER_NAMES = ['antigravity-zh-state.json'];
 
 // How long Antigravity is given to close on its own before it is force-killed.
 const GRACEFUL_TIMEOUT_MS = 20000;
@@ -121,12 +125,22 @@ function resolveAppPaths(customAppDir) {
  * @returns {{ language: string, patchedAt?: string, asarSize?: number, version?: string }|null}
  */
 function readState(statePath) {
-    try {
-        const parsed = JSON.parse(fs.readFileSync(statePath, 'utf8'));
-        return parsed && typeof parsed.language === 'string' ? parsed : null;
-    } catch {
-        return null;
+    // The current marker wins; a marker left by a pre-rename release is read as
+    // a fallback so an existing install does not lose its recorded language.
+    const candidates = [statePath, ...LEGACY_STATE_MARKER_NAMES.map(
+        (name) => path.join(path.dirname(statePath), name)
+    )];
+    for (const candidate of candidates) {
+        try {
+            const parsed = JSON.parse(fs.readFileSync(candidate, 'utf8'));
+            if (parsed && typeof parsed.language === 'string') {
+                return parsed;
+            }
+        } catch {
+            // Try the next candidate.
+        }
     }
+    return null;
 }
 
 /**
@@ -135,7 +149,7 @@ function readState(statePath) {
  * (for example after an app update) and fall back to content detection.
  *
  * @param {string} statePath
- * @param {string} language - 'zh' or 'en'
+ * @param {string} language - Installed locale code, or 'en' when restored.
  * @param {string} asarPath
  */
 function writeState(statePath, language, asarPath) {
@@ -155,6 +169,18 @@ function writeState(statePath, language, asarPath) {
 
     try {
         fs.writeFileSync(statePath, JSON.stringify(payload, null, 2) + '\n', 'utf8');
+        // A stale pre-rename marker beside the new one would keep being read as
+        // a fallback, so it is removed once the new marker is safely written.
+        for (const name of LEGACY_STATE_MARKER_NAMES) {
+            const legacyPath = path.join(path.dirname(statePath), name);
+            if (legacyPath !== statePath) {
+                try {
+                    fs.rmSync(legacyPath, { force: true });
+                } catch {
+                    // A leftover marker is harmless; the new one takes priority.
+                }
+            }
+        }
     } catch {
         // A missing marker degrades detection but must never fail the patch.
     }
@@ -188,7 +214,7 @@ function isAntigravityRunning() {
     }
 
     // -x matches the executable name only, so this never matches our own
-    // command line (which contains the string "antigravity-zh"). Each name is
+    // command line (which contains the string "polygravity"). Each name is
     // checked separately to keep process discovery shell-free.
     for (const name of ['Antigravity', 'antigravity']) {
         try {
@@ -323,5 +349,6 @@ module.exports = {
     isAntigravityRunning,
     readState,
     writeState,
-    STATE_MARKER_NAME
+    STATE_MARKER_NAME,
+    LEGACY_STATE_MARKER_NAMES
 };

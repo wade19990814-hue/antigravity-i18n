@@ -1,13 +1,14 @@
-/* antigravity-zh:begin */
+/* polygravity:begin */
 /**
  * Locale-neutral DOM translation engine.
  *
  * This file contains no language data. Everything locale specific -- the
- * dictionary, the dynamic patterns, punctuation mapping and <html lang> -- is
- * injected as LOCALE_DATA when the fragment is built, so adding a language means
- * adding a JSON file under src/locales/ rather than editing this logic.
+ * dictionary, the dynamic patterns, punctuation mapping, plural rules, writing
+ * direction and <html lang> -- is injected as LOCALE_DATA when the fragment is
+ * built, so adding a language means adding a JSON file under src/locales/
+ * rather than editing this logic.
  *
- * The antigravity-zh:begin/end sentinels delimit this whole block so a re-run
+ * The polygravity:begin/end sentinels delimit this whole block so a re-run
  * replaces it exactly. Locating it by a code identifier instead would leave the
  * leading comment behind and grow the file on every run.
  */
@@ -17,6 +18,59 @@ const agPunctuation = AG_LOCALE.punctuation || {};
 const agPunctuationSkip = AG_LOCALE.punctuationSkipSuffixes || [];
 const agValueMaps = AG_LOCALE.valueMaps || {};
 
+// Replacement text is inserted literally. String.prototype.replace still
+// interprets $&, $\u0060, $', $n and $$ inside the replacement even when the
+// pattern is a plain string, so a translation containing a dollar sign would
+// otherwise splice the English source back in or silently drop characters.
+function agSpliceLiteral(value, needle, replacement) {
+    const at = value.indexOf(needle);
+    if (at < 0) {
+        return value;
+    }
+    return value.slice(0, at) + replacement + value.slice(at + needle.length);
+}
+
+// Plural category selection, used by patterns whose template varies with a
+// count. Intl.PluralRules knows the CLDR categories for the target language,
+// so a locale only supplies the forms it actually needs.
+const agPluralSelector = (() => {
+    const code = AG_LOCALE.pluralLocale || AG_LOCALE.language;
+    try {
+        const rules = new Intl.PluralRules(code);
+        return (count) => rules.select(count);
+    } catch {
+        return (count) => (count === 1 ? 'one' : 'other');
+    }
+})();
+
+/**
+ * Choose the plural form of a template for a given count.
+ *
+ * A rule may declare 'templates' as a category map ({ one, few, other, ... }).
+ * The exact CLDR category wins; '=N' exact-value keys win over categories; and
+ * 'other' is the required fallback so a missing category can never render as
+ * an empty string.
+ */
+function agSelectTemplate(rule, match) {
+    if (!rule.templates) {
+        return rule.template;
+    }
+    const raw = match[rule.pluralGroup];
+    const count = Number(String(raw === undefined || raw === null ? '' : raw).replace(/[\s,\u00A0\u202F]/g, ''));
+    if (!Number.isFinite(count)) {
+        return rule.templates.other || rule.template;
+    }
+    const exact = rule.templates['=' + count];
+    if (typeof exact === 'string') {
+        return exact;
+    }
+    const category = agPluralSelector(count);
+    if (typeof rule.templates[category] === 'string') {
+        return rule.templates[category];
+    }
+    return rule.templates.other || rule.template;
+}
+
 // Compiled once: each entry pairs a matcher with its output template so the
 // match test and the substitution can never drift apart (the previous hand
 // written version duplicated all 12 regexes across two functions).
@@ -24,6 +78,8 @@ const agPatterns = (AG_LOCALE.patterns || []).map((rule) => ({
     id: rule.id,
     regex: new RegExp(rule.pattern, rule.flags || ''),
     template: rule.template,
+    templates: rule.templates || null,
+    pluralGroup: rule.pluralGroup || 1,
     replace: rule.replace || {},
     trimGroups: rule.trimGroups || [],
 }));
@@ -152,12 +208,13 @@ function translateString(value) {
 
     const direct = agLookup(trimmed);
     if (direct) {
-        return value.replace(trimmed, direct);
+        return agSpliceLiteral(value, trimmed, direct);
     }
 
     const matched = agMatchPattern(trimmed);
     if (matched) {
-        return value.replace(trimmed, agFormat(matched.rule.template, matched.match, matched.rule));
+        const template = agSelectTemplate(matched.rule, matched.match);
+        return agSpliceLiteral(value, trimmed, agFormat(template, matched.match, matched.rule));
     }
 
     // Dictionary hit with trailing punctuation: localize the punctuation too,
@@ -173,9 +230,9 @@ function translateString(value) {
                 }
             }
             if (agPunctuationSkip.some((suffix) => translated.endsWith(suffix))) {
-                return value.replace(trimmed, translated);
+                return agSpliceLiteral(value, trimmed, translated);
             }
-            return value.replace(trimmed, translated + punctuation);
+            return agSpliceLiteral(value, trimmed, translated + punctuation);
         }
     }
     return value;
@@ -284,6 +341,11 @@ function translateNode(root) {
 }
 function installLocalePatch() {
     document.documentElement.setAttribute('lang', AG_LOCALE.htmlLang || AG_LOCALE.language);
+    // Right-to-left scripts need the document direction as well; without it a
+    // fully translated RTL UI still lays out left-to-right.
+    if (AG_LOCALE.dir) {
+        document.documentElement.setAttribute('dir', AG_LOCALE.dir);
+    }
     translateNode(document.documentElement);
     const observer = new MutationObserver((mutations) => {
         for (const mutation of mutations) {
@@ -312,4 +374,4 @@ if (document.readyState === 'loading') {
 else {
     installLocalePatch();
 }
-/* antigravity-zh:end */
+/* polygravity:end */

@@ -19,10 +19,10 @@ const {
 } = require('./locale');
 
 // Markers injected by our patch fragments. Presence of any of these inside the
-// packed archive means a Chinese patch is installed.
 // Any of these inside the packed archive means a localization patch is present.
 // installLocalePatch is emitted by the current engine; installZhCNPatch and
-// zhCNText are legacy markers from pre-locale versions.
+// zhCNText are legacy markers from versions that predated locale files, kept so
+// an install patched by an older release is still recognised.
 const PATCH_MARKERS = [
     'installLocalePatch',
     'installZhCNPatch',
@@ -31,9 +31,13 @@ const PATCH_MARKERS = [
 ];
 
 // Sentinels wrapping every injected block. Fragments carry them, so a re-run can
-// excise the previous block exactly instead of guessing its bounds.
-const BLOCK_BEGIN = '/* antigravity-zh:begin */';
-const BLOCK_END = '/* antigravity-zh:end */';
+// excise the previous block exactly instead of guessing its bounds. The former
+// antigravity-zh pair is still recognised, so an install patched before the
+// rename is replaced cleanly instead of accumulating a second block.
+const BLOCK_SENTINELS = [
+    ['/* polygravity:begin */', '/* polygravity:end */'],
+    ['/* antigravity-zh:begin */', '/* antigravity-zh:end */']
+];
 
 // Fallback start markers for blocks injected before sentinels existed. Matching
 // on a code identifier cannot see the fragment's leading comment, so these are
@@ -44,6 +48,10 @@ const LEGACY_MENU_START_MARKER = 'function translateMenu(menu)';
 // The engine must run before the preload script exposes its bridges, so a fresh
 // injection goes immediately above this declaration.
 const UPDATER_ANCHOR = 'const updaterAPI = {';
+
+// Staging directories are created beside the destination so the final rename
+// stays on one volume. The prefix is asserted by the cleanup tests.
+const STAGE_DIR_PREFIX = '.polygravity-stage-';
 
 /**
  * Remove a previously injected block so the new one replaces it exactly.
@@ -72,17 +80,23 @@ function splitAtInjectedBlock(source, legacy = {}) {
     // Remove every sentinel-delimited block, so a file that already accumulated
     // duplicates is repaired instead of merely not made worse. The first block's
     // position is where the replacement goes.
-    for (;;) {
-        const begin = cleaned.indexOf(BLOCK_BEGIN);
-        if (begin < 0) break;
-        const end = cleaned.indexOf(BLOCK_END, begin);
-        if (end < 0) break;
-        const before = cleaned.slice(0, begin);
-        const after = cleaned.slice(end + BLOCK_END.length);
-        if (head === null) {
-            head = before;
+    // Every known sentinel pair is swept, current and legacy alike, so an
+    // install patched under the previous package name is upgraded in place.
+    for (const [beginMarker, endMarker] of BLOCK_SENTINELS) {
+        for (;;) {
+            const begin = cleaned.indexOf(beginMarker);
+            if (begin < 0) break;
+            const end = cleaned.indexOf(endMarker, begin);
+            if (end < 0) break;
+            const before = cleaned.slice(0, begin);
+            const after = cleaned.slice(end + endMarker.length);
+            // The earliest block across all sentinel pairs decides where the
+            // replacement lands, so output does not depend on sweep order.
+            if (head === null || before.length < head.length) {
+                head = before;
+            }
+            cleaned = before + after;
         }
-        cleaned = before + after;
     }
     if (head !== null) {
         return { head: head.replace(/\s+$/, ''), tail: cleaned.slice(head.length).replace(/^\s+/, ''), replaced: true };
@@ -135,6 +149,57 @@ function readUtf8(filePath) {
     return fs.readFileSync(filePath, 'utf8');
 }
 
+/**
+ * Drop any memoised asar header for a path whose contents just changed.
+ *
+ * @param {string} archivePath
+ */
+function invalidateArchiveCache(archivePath) {
+    try {
+        require('@electron/asar').uncache(archivePath);
+    } catch {
+        // Cache invalidation is an optimisation guard, never a failure mode.
+    }
+}
+
+// Chromium reads --lang at startup, which is what makes native dialogs, spell
+// checking and date formatting follow the chosen language. It is written inside
+// a hasSwitch guard so an explicit command-line --lang from the user still wins.
+const LANG_SWITCH_RE = /if \(!electron_1\.app\.commandLine\.hasSwitch\('lang'\)\) \{\s*electron_1\.app\.commandLine\.appendSwitch\('lang', '[^']*'\);\s*\}/;
+const DEBUG_PORT_RE = /if\s*\(!electron_1\.app\.commandLine\.hasSwitch\('remote-debugging-port'\)\)\s*\{\s*electron_1\.app\.commandLine\.appendSwitch\('remote-debugging-port',\s*'0'\);\s*\}/;
+
+/**
+ * Point Chromium's --lang switch at the locale being installed.
+ *
+ * An earlier version only inserted the switch when absent, which meant that
+ * switching from one language to another left the previous code in place and
+ * Chromium kept formatting dates and spell checking in the old language. The
+ * block is therefore rewritten every run rather than merely created once.
+ *
+ * @param {string} source main.js contents
+ * @param {object} locale
+ * @returns {string}
+ */
+function applyLanguageSwitch(source, locale) {
+    const chromiumLang = locale.chromiumLang || locale.language;
+    if (!/^[A-Za-z0-9-]+$/.test(chromiumLang)) {
+        throw new Error(`Locale '${locale.language}' has an unusable Chromium language code.`);
+    }
+    const block = [
+        "if (!electron_1.app.commandLine.hasSwitch('lang')) {",
+        `    electron_1.app.commandLine.appendSwitch('lang', '${chromiumLang}');`,
+        '}'
+    ].join('\n');
+
+    if (LANG_SWITCH_RE.test(source)) {
+        return source.replace(LANG_SWITCH_RE, () => block);
+    }
+    if (DEBUG_PORT_RE.test(source)) {
+        return source.replace(DEBUG_PORT_RE, (matched) => `${matched}\n${block}`);
+    }
+    return source;
+}
+
 function writeUtf8(filePath, content) {
     fs.writeFileSync(filePath, content, { encoding: 'utf8' });
 }
@@ -178,7 +243,7 @@ function createUniqueBackupPath(resourcesDir, fileName) {
  */
 function atomicReplaceFile(sourcePath, destinationPath) {
     const destinationDir = path.dirname(destinationPath);
-    const stageDir = fs.mkdtempSync(path.join(destinationDir, '.antigravity-zh-stage-'));
+    const stageDir = fs.mkdtempSync(path.join(destinationDir, STAGE_DIR_PREFIX));
     const stagedPath = path.join(stageDir, path.basename(destinationPath));
     let fd;
     try {
@@ -188,6 +253,11 @@ function atomicReplaceFile(sourcePath, destinationPath) {
         fs.closeSync(fd);
         fd = null;
         fs.renameSync(stagedPath, destinationPath);
+        // @electron/asar memoises archive headers by path. Leaving the entry in
+        // place makes a later read of this path return the previous archive's
+        // contents, which surfaced as an identity check failing against an
+        // archive that had in fact just been written correctly.
+        invalidateArchiveCache(destinationPath);
     } finally {
         if (fd !== null && fd !== undefined) {
             try { fs.closeSync(fd); } catch { /* Best effort. */ }
@@ -310,6 +380,55 @@ function sameArchiveRelease(left, right) {
     return !left || Boolean(right && left.name === right.name && left.version === right.version);
 }
 
+// The engine declares its own locale, so the installed archive can name the
+// active language instead of the state marker having to be trusted.
+const ARCHIVE_LOCALE_RE = /const AG_LOCALE = (\{[\s\S]*?\});\s*const agText/;
+
+/**
+ * Read the locale of an installed patch straight out of the archive.
+ *
+ * Detection used to be binary, which meant a Japanese install still reported
+ * Chinese. Parsing the injected locale header makes the archive authoritative
+ * about which language is active, not merely whether a patch exists.
+ *
+ * @param {string} asarPath
+ * @returns {{ code: string, name: string|null }|null}
+ */
+function readArchiveLocale(asarPath) {
+    try {
+        const asar = require('@electron/asar');
+        const preload = asar.extractFile(asarPath, 'dist/preload.js').toString('utf8');
+        const match = preload.match(ARCHIVE_LOCALE_RE);
+        if (!match) {
+            return null;
+        }
+        const parsed = JSON.parse(match[1]);
+        if (typeof parsed.language !== 'string' || !parsed.language) {
+            return null;
+        }
+        return { code: parsed.language, name: typeof parsed.name === 'string' ? parsed.name : null };
+    } catch {
+        // An unreadable or pre-locale archive falls back to the state marker.
+        return null;
+    }
+}
+
+/**
+ * Map a recorded language onto a locale code.
+ *
+ * Markers written before this tool tracked locales stored a bare 'zh', so an
+ * existing install keeps reporting correctly instead of showing up as unknown.
+ *
+ * @param {string|null|undefined} language
+ * @returns {string}
+ */
+function normalizeLanguage(language) {
+    if (!language) {
+        return 'unknown';
+    }
+    return language === 'zh' ? 'zh-CN' : language;
+}
+
 function getStatus(options = {}) {
     const { appDir, asarPath, cleanBackupPath, statePath } = resolveAppPaths(options.appDir);
     const hasCleanBackup = fs.existsSync(cleanBackupPath);
@@ -321,20 +440,28 @@ function getStatus(options = {}) {
     // context, and is reported as stale when the two disagree (which happens
     // when an Antigravity update replaces app.asar behind our back).
     let currentLanguage;
+    let localeName = null;
     if (detected === true) {
-        currentLanguage = 'zh';
+        // A patched archive names its own locale. Archives written by a release
+        // that predated locale files carry no header, and those were zh-CN only.
+        const archiveLocale = readArchiveLocale(asarPath);
+        currentLanguage = archiveLocale ? archiveLocale.code : 'zh-CN';
+        localeName = archiveLocale ? archiveLocale.name : null;
     } else if (detected === false) {
         currentLanguage = 'en';
     } else {
-        currentLanguage = state ? state.language : 'unknown';
+        currentLanguage = state ? normalizeLanguage(state.language) : 'unknown';
     }
 
-    const stateIsStale = Boolean(state) && detected !== null && state.language !== currentLanguage;
+    const stateIsStale = Boolean(state)
+        && detected !== null
+        && normalizeLanguage(state.language) !== currentLanguage;
 
     return {
         appDir,
         asarPath,
         currentLanguage,
+        localeName,
         hasCleanBackup,
         statePath,
         lastPatchedAt: state ? state.patchedAt || null : null,
@@ -424,7 +551,13 @@ function ensureRestorableCleanBackup(resourcesDir, cleanBackupPath, expectedIden
     atomicReplaceFile(pristine, cleanBackupPath);
 }
 
-async function switchToChinese(options = {}) {
+/**
+ * Install a locale into Antigravity, replacing whatever patch is present.
+ *
+ * @param {object} [options]
+ * @param {string} [options.locale] Locale code to install.
+ */
+async function applyLocale(options = {}) {
     const { appDir, resourcesDir, asarPath, cleanBackupPath, statePath } = resolveAppPaths(options.appDir);
     // Locale data is validated before anything is modified, so a malformed
     // locale fails fast instead of producing a broken UI after the rewrite.
@@ -454,7 +587,7 @@ async function switchToChinese(options = {}) {
     const backupPath = createUniqueBackupPath(resourcesDir, `app.asar.bak-${stamp}`);
     fs.copyFileSync(asarPath, backupPath);
 
-    const tmpRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'antigravity-zh-patch-'));
+    const tmpRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'polygravity-patch-'));
     const extractDir = path.join(tmpRoot, 'app');
     const packedPath = path.join(tmpRoot, 'app.asar');
 
@@ -470,19 +603,8 @@ async function switchToChinese(options = {}) {
         // 1. Patch main.js (set lang switch)
         console.log('Injecting language switch into main.js...');
         let main = readUtf8(mainPath);
-        if (!main.includes("appendSwitch('lang'")) {
-            const needle = /if\s*\(!electron_1\.app\.commandLine\.hasSwitch\('remote-debugging-port'\)\)\s*\{\s*electron_1\.app\.commandLine\.appendSwitch\('remote-debugging-port',\s*'0'\);\s*\}/;
-            const langPatch = `if (!electron_1.app.commandLine.hasSwitch('remote-debugging-port')) {
-    electron_1.app.commandLine.appendSwitch('remote-debugging-port', '0');
-}
-if (!electron_1.app.commandLine.hasSwitch('lang')) {
-    electron_1.app.commandLine.appendSwitch('lang', 'zh-CN');
-}`;
-            if (needle.test(main)) {
-                main = main.replace(needle, langPatch);
-                writeUtf8(mainPath, main);
-            }
-        }
+        main = applyLanguageSwitch(main, locale);
+        writeUtf8(mainPath, main);
         if (!main.includes("appendSwitch('lang'")) {
             throw new Error(
                 'Could not apply the language switch to main.js: the expected code pattern was not found. '
@@ -544,8 +666,8 @@ if (!electron_1.app.commandLine.hasSwitch('lang')) {
         }
 
         atomicReplaceFile(packedPath, asarPath);
-        writeState(statePath, 'zh', asarPath);
-        console.log(`✓ Successfully switched to Chinese! (app.asar updated)`);
+        writeState(statePath, locale.language, asarPath);
+        console.log(`✓ Successfully switched to ${locale.name} (${locale.language})! (app.asar updated)`);
         console.log(`  Backup saved at: ${backupPath}`);
 
         if (options.restart !== false) {
@@ -561,7 +683,10 @@ if (!electron_1.app.commandLine.hasSwitch('lang')) {
     }
 }
 
-function switchToEnglish(options = {}) {
+/**
+ * Restore the official untranslated archive.
+ */
+function restoreOfficial(options = {}) {
     const { appDir, resourcesDir, asarPath, cleanBackupPath, statePath } = resolveAppPaths(options.appDir);
 
     const currentPatchState = detectPatchInArchive(asarPath);
@@ -604,8 +729,15 @@ function switchToEnglish(options = {}) {
 
 module.exports = {
     getStatus,
-    switchToChinese,
-    switchToEnglish,
+    applyLocale,
+    restoreOfficial,
+    // Retained so an existing programmatic caller keeps working after the
+    // language-neutral rename.
+    switchToChinese: applyLocale,
+    switchToEnglish: restoreOfficial,
+    readArchiveLocale,
+    applyLanguageSwitch,
+    normalizeLanguage,
     // Exported for tests: re-patching must be byte-stable, which is easier to
     // assert directly than by repacking a real archive.
     injectFragment,
@@ -614,8 +746,8 @@ module.exports = {
     ensureCleanBackupForPatch,
     ensureRestorableCleanBackup,
     readArchiveIdentity,
-    BLOCK_BEGIN,
-    BLOCK_END,
+    BLOCK_SENTINELS,
+    STAGE_DIR_PREFIX,
     LEGACY_ENGINE_START_MARKERS,
     LEGACY_MENU_START_MARKER,
     UPDATER_ANCHOR

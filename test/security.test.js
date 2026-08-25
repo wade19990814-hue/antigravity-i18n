@@ -14,7 +14,9 @@ const {
     createUniqueBackupPath,
     ensureCleanBackupForPatch,
     ensureRestorableCleanBackup,
-    switchToEnglish,
+    restoreOfficial,
+    STAGE_DIR_PREFIX,
+    readArchiveIdentity,
 } = require('../src/index');
 const { loadLocale, validateLocale } = require('../src/locale');
 
@@ -30,7 +32,7 @@ function check(name, fn) {
 }
 
 function withTempDir(fn) {
-    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'antigravity-zh-security-'));
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'polygravity-security-'));
     try {
         return fn(dir);
     } finally {
@@ -109,7 +111,7 @@ check('atomic replacement preserves the destination if staging fails', () => wit
     fs.writeFileSync(destination, 'original');
     assert.throws(() => atomicReplaceFile(path.join(dir, 'missing.asar'), destination));
     assert.strictEqual(fs.readFileSync(destination, 'utf8'), 'original');
-    assert.ok(!fs.readdirSync(dir).some((name) => name.startsWith('.antigravity-zh-stage-')));
+    assert.ok(!fs.readdirSync(dir).some((name) => name.startsWith(STAGE_DIR_PREFIX)));
 }));
 
 check('atomic replacement swaps a fully staged file', () => withTempDir((dir) => {
@@ -119,7 +121,7 @@ check('atomic replacement swaps a fully staged file', () => withTempDir((dir) =>
     fs.writeFileSync(destination, 'old archive');
     atomicReplaceFile(source, destination);
     assert.strictEqual(fs.readFileSync(destination, 'utf8'), 'new archive');
-    assert.ok(!fs.readdirSync(dir).some((name) => name.startsWith('.antigravity-zh-stage-')));
+    assert.ok(!fs.readdirSync(dir).some((name) => name.startsWith(STAGE_DIR_PREFIX)));
 }));
 
 check('official updates refresh a stale clean backup', () => withTempDir((dir) => {
@@ -152,7 +154,7 @@ check('restoring an already-English app refreshes backup without rewriting app.a
     fs.mkdirSync(resources);
     fs.writeFileSync(asar, 'current official archive');
     fs.writeFileSync(path.join(resources, 'app.asar.clean-backup'), 'stale official archive');
-    switchToEnglish({ appDir: dir, restart: false, noKill: true });
+    restoreOfficial({ appDir: dir, restart: false, noKill: true });
     assert.strictEqual(fs.readFileSync(asar, 'utf8'), 'current official archive');
     assert.strictEqual(
         fs.readFileSync(path.join(resources, 'app.asar.clean-backup'), 'utf8'),
@@ -172,8 +174,47 @@ check('process control remains shell-free and never targets generic language ser
     assert.ok(!/language_server(?:\.exe)?/.test(source));
 });
 
-if (failures > 0) {
-    console.error('\n' + failures + ' security check(s) failed.');
-    process.exit(1);
+/**
+ * Packing an archive is asynchronous, so this check runs after the synchronous
+ * ones rather than inside withTempDir, whose cleanup is synchronous.
+ */
+async function checkArchiveCacheInvalidation() {
+    const name = 'replacing an archive invalidates the memoised asar header';
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'polygravity-cache-'));
+    try {
+        // @electron/asar memoises archive headers by path. Without invalidation a
+        // read after replacement returns the previous archive, which made a
+        // second apply fail its identity check against an archive it had just
+        // written correctly.
+        const asar = require('@electron/asar');
+        const build = (version) => {
+            const staging = fs.mkdtempSync(path.join(dir, 'src-'));
+            fs.writeFileSync(path.join(staging, 'package.json'), JSON.stringify({ name: 'antigravity', version }));
+            return staging;
+        };
+        const first = path.join(dir, 'first.asar');
+        const second = path.join(dir, 'second.asar');
+        const destination = path.join(dir, 'app.asar');
+        await asar.createPackageWithOptions(build('1.0.0'), first, {});
+        await asar.createPackageWithOptions(build('2.0.0'), second, {});
+
+        atomicReplaceFile(first, destination);
+        assert.strictEqual(readArchiveIdentity(destination).version, '1.0.0');
+        atomicReplaceFile(second, destination);
+        assert.strictEqual(readArchiveIdentity(destination).version, '2.0.0', 'stale asar header was reused');
+        console.log('  ok   ' + name);
+    } catch (err) {
+        failures += 1;
+        console.error('  FAIL ' + name + ': ' + err.message);
+    } finally {
+        fs.rmSync(dir, { recursive: true, force: true });
+    }
 }
-console.log('\nAll security checks passed.');
+
+checkArchiveCacheInvalidation().then(() => {
+    if (failures > 0) {
+        console.error('\n' + failures + ' security check(s) failed.');
+        process.exit(1);
+    }
+    console.log('\nAll security checks passed.');
+});
