@@ -5,11 +5,11 @@ const { execFileSync, spawn } = require('child_process');
 
 // Name of the state marker written next to app.asar. It records what this tool
 // last did, so language detection never has to guess from archive internals.
-const STATE_MARKER_NAME = 'polygravity-state.json';
+const STATE_MARKER_NAME = 'antigravity-i18n-state.json';
 
 // Marker name used before the rename. It is still read so an install patched by
 // an earlier release keeps its recorded language instead of reporting unknown.
-const LEGACY_STATE_MARKER_NAMES = ['antigravity-zh-state.json'];
+const LEGACY_STATE_MARKER_NAMES = ['polygravity-state.json', 'antigravity-zh-state.json'];
 
 // How long Antigravity is given to close on its own before it is force-killed.
 const GRACEFUL_TIMEOUT_MS = 20000;
@@ -214,7 +214,7 @@ function isAntigravityRunning() {
     }
 
     // -x matches the executable name only, so this never matches our own
-    // command line (which contains the string "polygravity"). Each name is
+    // command line (which contains the string "antigravity-i18n"). Each name is
     // checked separately to keep process discovery shell-free.
     for (const name of ['Antigravity', 'antigravity']) {
         try {

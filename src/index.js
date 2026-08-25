@@ -32,9 +32,10 @@ const PATCH_MARKERS = [
 
 // Sentinels wrapping every injected block. Fragments carry them, so a re-run can
 // excise the previous block exactly instead of guessing its bounds. The former
-// antigravity-zh pair is still recognised, so an install patched before the
-// rename is replaced cleanly instead of accumulating a second block.
+// polygravity and antigravity-zh pairs are still recognised, so installs patched
+// before either rename are replaced cleanly instead of accumulating a second block.
 const BLOCK_SENTINELS = [
+    ['/* antigravity-i18n:begin */', '/* antigravity-i18n:end */'],
     ['/* polygravity:begin */', '/* polygravity:end */'],
     ['/* antigravity-zh:begin */', '/* antigravity-zh:end */']
 ];
@@ -51,7 +52,7 @@ const UPDATER_ANCHOR = 'const updaterAPI = {';
 
 // Staging directories are created beside the destination so the final rename
 // stays on one volume. The prefix is asserted by the cleanup tests.
-const STAGE_DIR_PREFIX = '.polygravity-stage-';
+const STAGE_DIR_PREFIX = '.antigravity-i18n-stage-';
 
 /**
  * Remove a previously injected block so the new one replaces it exactly.
@@ -587,7 +588,7 @@ async function applyLocale(options = {}) {
     const backupPath = createUniqueBackupPath(resourcesDir, `app.asar.bak-${stamp}`);
     fs.copyFileSync(asarPath, backupPath);
 
-    const tmpRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'polygravity-patch-'));
+    const tmpRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'antigravity-i18n-patch-'));
     const extractDir = path.join(tmpRoot, 'app');
     const packedPath = path.join(tmpRoot, 'app.asar');
 

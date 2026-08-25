@@ -1,4 +1,4 @@
-# polygravity
+# antigravity-i18n
 
 [English](./README.md)
 
@@ -29,16 +29,16 @@
 
 ```bash
 # 安装语言包（默认简体中文）
-npx polygravity apply --locale zh-CN
+npx antigravity-i18n apply --locale zh-CN
 
 # 还原官方版本
-npx polygravity restore
+npx antigravity-i18n restore
 
 # 查看当前语言与备份状态
-npx polygravity status
+npx antigravity-i18n status
 
 # 查看内置的语言包
-npx polygravity locales
+npx antigravity-i18n locales
 ```
 
 `zh` 是 `apply --locale zh-CN` 的简写，`en` 是 `restore` 的简写。
@@ -46,8 +46,8 @@ npx polygravity locales
 ### 从源码运行
 
 ```bash
-git clone https://github.com/wade19990814-hue/polygravity.git
-cd polygravity
+git clone https://github.com/wade19990814-hue/antigravity-i18n.git
+cd antigravity-i18n
 npm install
 node bin/cli.js apply --locale zh-CN
 ```

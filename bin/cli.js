@@ -15,11 +15,11 @@ const RESTORE_ALIASES = new Set(['restore', 'en', 'english', 'official']);
 
 function printHelp() {
     console.log(`
-Polygravity - Antigravity Desktop App localization CLI
+antigravity-i18n - Antigravity Desktop App localization CLI
 Applies a bundled language pack to Antigravity and restores the official build.
 
 Usage:
-  npx polygravity <command> [options]
+  npx antigravity-i18n <command> [options]
   node bin/cli.js <command> [options]
 
 Commands:
@@ -38,9 +38,9 @@ Options:
   -v, --version     Show package version
 
 Examples:
-  npx polygravity apply --locale zh-CN
-  npx polygravity restore
-  npx polygravity locales
+  npx antigravity-i18n apply --locale zh-CN
+  npx antigravity-i18n restore
+  npx antigravity-i18n locales
   node bin/cli.js apply --app-dir "C:\\Users\\YourName\\AppData\\Local\\Programs\\antigravity"
 
 Shorthands: 'zh' applies zh-CN and 'en' restores the official build.
@@ -151,7 +151,7 @@ async function main() {
                 const isDefault = code === DEFAULT_LOCALE ? '  (default)' : '';
                 console.log(`  ${code.padEnd(8)} ${data.name || ''} - ${entries} entries, ${patterns} dynamic rules${isDefault}`);
             }
-            console.log('\nApply one with: npx polygravity apply --locale <code>\n');
+            console.log('\nApply one with: npx antigravity-i18n apply --locale <code>\n');
             return;
         }
 

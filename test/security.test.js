@@ -32,7 +32,7 @@ function check(name, fn) {
 }
 
 function withTempDir(fn) {
-    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'polygravity-security-'));
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'antigravity-i18n-security-'));
     try {
         return fn(dir);
     } finally {
@@ -180,7 +180,7 @@ check('process control remains shell-free and never targets generic language ser
  */
 async function checkArchiveCacheInvalidation() {
     const name = 'replacing an archive invalidates the memoised asar header';
-    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'polygravity-cache-'));
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'antigravity-i18n-cache-'));
     try {
         // @electron/asar memoises archive headers by path. Without invalidation a
         // read after replacement returns the previous archive, which made a

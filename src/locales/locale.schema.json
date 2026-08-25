@@ -1,6 +1,6 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "https://github.com/wade19990814-hue/polygravity/blob/main/src/locales/locale.schema.json",
+  "$id": "https://github.com/wade19990814-hue/antigravity-i18n/blob/main/src/locales/locale.schema.json",
   "title": "Antigravity locale definition",
   "description": "Language data consumed by src/locale.js and injected into the locale-neutral engine at src/patches/engine.jsfrag. Adding a language means adding one file of this shape.",
   "type": "object",

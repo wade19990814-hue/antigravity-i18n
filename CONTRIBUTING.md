@@ -6,8 +6,8 @@
 
 1. **Fork 本仓库** 并克隆到本地：
    ```bash
-   git clone https://github.com/wade19990814-hue/polygravity.git
-   cd polygravity
+   git clone https://github.com/wade19990814-hue/antigravity-i18n.git
+   cd antigravity-i18n
    ```
 
 2. **运行测试**：

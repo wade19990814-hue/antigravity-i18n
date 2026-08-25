@@ -1,4 +1,4 @@
-# polygravity
+# antigravity-i18n
 
 [简体中文](./README.zh-CN.md)
 
@@ -29,16 +29,16 @@ Requires Node.js (≥16).
 
 ```bash
 # Install a language pack (Simplified Chinese is the default)
-npx polygravity apply --locale zh-CN
+npx antigravity-i18n apply --locale zh-CN
 
 # Restore the official build
-npx polygravity restore
+npx antigravity-i18n restore
 
 # Check the active language and backups
-npx polygravity status
+npx antigravity-i18n status
 
 # See what language packs are bundled
-npx polygravity locales
+npx antigravity-i18n locales
 ```
 
 `zh` is shorthand for `apply --locale zh-CN`, and `en` is shorthand for `restore`.
@@ -46,8 +46,8 @@ npx polygravity locales
 ### Run from source
 
 ```bash
-git clone https://github.com/wade19990814-hue/polygravity.git
-cd polygravity
+git clone https://github.com/wade19990814-hue/antigravity-i18n.git
+cd antigravity-i18n
 npm install
 node bin/cli.js apply --locale zh-CN
 ```
