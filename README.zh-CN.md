@@ -30,6 +30,9 @@
 ```bash
 # 安装语言包（默认简体中文）
 npx antigravity-i18n apply --locale zh-CN
+# 日本語: npx antigravity-i18n apply --locale ja
+# 한국어: npx antigravity-i18n apply --locale ko
+# Español: npx antigravity-i18n apply --locale es
 
 # 还原官方版本
 npx antigravity-i18n restore

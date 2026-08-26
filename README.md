@@ -30,6 +30,9 @@ Requires Node.js (≥16).
 ```bash
 # Install a language pack (Simplified Chinese is the default)
 npx antigravity-i18n apply --locale zh-CN
+# 日本語: npx antigravity-i18n apply --locale ja
+# 한국어: npx antigravity-i18n apply --locale ko
+# Español: npx antigravity-i18n apply --locale es
 
 # Restore the official build
 npx antigravity-i18n restore
