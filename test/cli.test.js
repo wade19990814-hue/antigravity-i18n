@@ -48,7 +48,8 @@ check('status names any locale, not just Chinese and English', () => {
     // An archive that predates the locale header supplies no name, so the
     // bundled pack is consulted before falling back to the bare code.
     assert.match(describeLanguage('zh-CN', null), /简体中文/);
-    assert.strictEqual(describeLanguage('ja', null), 'ja');
+    assert.match(describeLanguage('ja', null), /日本語/);
+    assert.strictEqual(describeLanguage('xx-YY', null), 'xx-YY');
 });
 
 check('a pre-rename state marker still reports its language', () => {
