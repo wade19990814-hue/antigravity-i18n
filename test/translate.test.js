@@ -8,7 +8,7 @@
  */
 
 const assert = require('assert');
-const { buildPreloadFragment, validateLocale } = require('../src/locale');
+const { buildPreloadFragment, loadLocale, validateLocale } = require('../src/locale');
 
 let failures = 0;
 
@@ -147,6 +147,20 @@ check('a grouped thousands count still selects the right form', () => {
         }]
     }));
     assert.strictEqual(translateString('1,000 active conversations'), '1,000 диалогов');
+});
+
+check('the shipped Russian pack selects real plural forms and inflects refresh durations', () => {
+    const { translateString } = loadCore(loadLocale('ru'));
+    assert.strictEqual(translateString('1 task running'), 'Выполняется 1 задача');
+    assert.strictEqual(translateString('2 tasks running'), 'Выполняются 2 задачи');
+    assert.strictEqual(translateString('5 tasks running'), 'Выполняются 5 задач');
+    assert.strictEqual(translateString('21 tasks running'), 'Выполняется 21 задача');
+    assert.strictEqual(translateString('22 tasks running'), 'Выполняются 22 задачи');
+    assert.strictEqual(translateString('25 tasks running'), 'Выполняются 25 задач');
+    assert.strictEqual(
+        translateString('You have used some of your weekly limit, it will fully refresh in 1 day, 2 hours, 5 minutes.'),
+        'Вы использовали часть недельного лимита; он полностью восстановится через 1 день, 2 часа, 5 минут.'
+    );
 });
 
 check('a language with no plural agreement still works with a single template', () => {

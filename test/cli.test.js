@@ -114,6 +114,7 @@ check('coverage gaps and copied placeholders are reported', () => {
     assert.ok(Array.isArray(report.extra.patterns));
     assert.strictEqual(describeLocale('zh-CN'), loadLocale('zh-CN').name);
     assert.strictEqual(describeLocale('xx-YY'), null);
+    assert.deepStrictEqual(diffLocale('es').untranslated, [], 'intentional Spanish cognates were misreported');
 });
 
 if (failures > 0) {

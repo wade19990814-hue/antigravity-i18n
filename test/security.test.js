@@ -99,6 +99,26 @@ check('nested value rules and dictionaries are validated before injection', () =
     assert.throws(() => validateLocale('zh-CN', badText), /non-empty string/);
 });
 
+check('source-equal translation exceptions are explicit and self-validating', () => {
+    const allowed = cloneLocale();
+    allowed.text.Settings = 'Settings';
+    allowed.allowSourceEqual = ['Settings'];
+    assert.doesNotThrow(() => validateLocale('zh-CN', allowed));
+
+    const unknown = cloneLocale();
+    unknown.allowSourceEqual = ['Not in the dictionary'];
+    assert.throws(() => validateLocale('zh-CN', unknown), /unknown text key/);
+
+    const translated = cloneLocale();
+    translated.allowSourceEqual = ['Settings'];
+    assert.throws(() => validateLocale('zh-CN', translated), /exactly equal/);
+
+    const duplicate = cloneLocale();
+    duplicate.text.Settings = 'Settings';
+    duplicate.allowSourceEqual = ['Settings', 'Settings'];
+    assert.throws(() => validateLocale('zh-CN', duplicate), /duplicates/);
+});
+
 check('app path resolution fails closed when app.asar is absent', () => withTempDir((dir) => {
     assert.throws(() => resolveAppPaths(dir), /app\.asar was not found/);
     fs.mkdirSync(path.join(dir, 'resources'));

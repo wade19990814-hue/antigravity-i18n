@@ -43,6 +43,12 @@
       "description": "Locale whose CLDR plural rules apply, for a regional code Intl.PluralRules does not resolve on its own. Defaults to 'language'.",
       "pattern": "^[A-Za-z]{2,3}(-[A-Za-z0-9]{2,8})*$"
     },
+    "allowSourceEqual": {
+      "type": "array",
+      "description": "English source strings whose correct translation is intentionally identical, such as international technical terms or cognates. Every item must exist in 'text' with an exactly equal value.",
+      "uniqueItems": true,
+      "items": { "type": "string", "minLength": 1 }
+    },
     "punctuation": {
       "type": "object",
       "description": "ASCII punctuation to localized punctuation, applied only to trailing punctuation of a dictionary hit. Leave empty for languages that keep ASCII punctuation.",

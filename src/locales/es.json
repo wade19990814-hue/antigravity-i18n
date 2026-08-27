@@ -5,6 +5,12 @@
   "englishName": "Spanish",
   "htmlLang": "es",
   "dir": "ltr",
+  "allowSourceEqual": [
+    "General",
+    "Global",
+    "Local",
+    "tokens)"
+  ],
   "text": {
     "Run": "Ejecutar",
     "Agent": "Agente",

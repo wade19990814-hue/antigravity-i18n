@@ -201,6 +201,25 @@ function validateLocale(code, locale) {
     }
 
     validateStringMap(code, 'text', locale.text);
+    if (locale.allowSourceEqual !== undefined) {
+        if (!Array.isArray(locale.allowSourceEqual)
+            || locale.allowSourceEqual.some((key) => typeof key !== 'string' || !key)) {
+            throw new Error(`Locale '${code}': 'allowSourceEqual' must be an array of non-empty strings.`);
+        }
+        if (new Set(locale.allowSourceEqual).size !== locale.allowSourceEqual.length) {
+            throw new Error(`Locale '${code}': 'allowSourceEqual' cannot contain duplicates.`);
+        }
+        for (const key of locale.allowSourceEqual) {
+            if (!Object.prototype.hasOwnProperty.call(locale.text, key)) {
+                throw new Error(`Locale '${code}': 'allowSourceEqual' references unknown text key '${key}'.`);
+            }
+            if (locale.text[key] !== key) {
+                throw new Error(
+                    `Locale '${code}': 'allowSourceEqual' key '${key}' must have a value exactly equal to its source.`
+                );
+            }
+        }
+    }
     if (locale.menu !== undefined) validateStringMap(code, 'menu', locale.menu);
     if (locale.punctuation !== undefined) {
         validateStringMap(code, 'punctuation', locale.punctuation, { allowEmptyKey: true, allowEmptyValue: true });
@@ -334,9 +353,9 @@ function validateLocale(code, locale) {
  */
 function buildPreloadFragment(locale) {
     const template = fs.readFileSync(path.join(PATCHES_DIR, 'engine.jsfrag'), 'utf8');
-    // The engine reads everything except the menu map, which is applied in the
-    // main process rather than the renderer.
-    const { menu, ...rendererLocale } = locale;
+    // The engine receives runtime locale data only. The menu map belongs to the
+    // main process, while allowSourceEqual is metadata used only by reports.
+    const { menu, allowSourceEqual, ...rendererLocale } = locale;
     return template.replace('LOCALE_DATA_PLACEHOLDER', () => JSON.stringify(rendererLocale));
 }
 
@@ -402,10 +421,11 @@ function diffLocale(code, reference = DEFAULT_LOCALE) {
     const menuKeys = new Set(Object.keys(locale.menu || {}));
     const patternIds = new Set((locale.patterns || []).map((rule) => rule.id).filter(Boolean));
 
-    // An entry whose value equals its key is a copied placeholder rather than a
-    // translation, which validation cannot distinguish from real output.
+    // An entry whose value equals its key is normally a copied placeholder.
+    // Packs must explicitly allowlist legitimate cognates and technical terms.
+    const allowedSourceEqual = new Set(locale.allowSourceEqual || []);
     const untranslated = Object.entries(locale.text)
-        .filter(([key, value]) => key === value)
+        .filter(([key, value]) => key === value && !allowedSourceEqual.has(key))
         .map(([key]) => key)
         .sort();
 

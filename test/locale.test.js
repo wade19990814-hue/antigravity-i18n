@@ -62,6 +62,7 @@ for (const code of locales) {
         const preload = buildPreloadFragment(locale);
         const menu = buildMenuFragment(locale);
         assert.ok(!preload.includes('LOCALE_DATA_PLACEHOLDER'), 'preload placeholder not replaced');
+        assert.ok(!preload.includes('allowSourceEqual'), 'report-only allowlist leaked into runtime data');
         assert.ok(!menu.includes('MENU_DATA_PLACEHOLDER'), 'menu placeholder not replaced');
         assert.ok(preload.includes('installLocalePatch'), 'preload missing install entry point');
     });
