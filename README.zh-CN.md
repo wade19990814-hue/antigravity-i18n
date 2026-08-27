@@ -1,6 +1,6 @@
 # antigravity-i18n
 
-[English](./README.md)
+[English](./README.md) | 简体中文 | [日本語](./README.ja.md) | [한국어](./README.ko.md) | [Español](./README.es.md)
 
 一行命令为 [Google Antigravity](https://antigravity.google/) 桌面端安装界面语言包，并支持随时按字节还原官方版本。
 
@@ -103,7 +103,7 @@ node scripts/locale-report.js
 
 ## 免责声明
 
-1. **本项目仅供个人学习、研究与技术交流使用，请勿用于商业用途。**
+1. 仅可在适用法律、合同及 Antigravity 使用条款允许的范围内使用本项目，使用者应自行确保使用方式合规。
 2. 本项目为独立开源工具，与 Google 无隶属、背书或授权关系。Antigravity 及相关商标归其各自所有者所有。
 3. 修改客户端存在风险，请自行判断后使用。作者不对由此产生的异常、数据丢失或其他后果承担责任。
 

@@ -1,6 +1,6 @@
 # antigravity-i18n
 
-[简体中文](./README.zh-CN.md)
+English | [简体中文](./README.zh-CN.md) | [日本語](./README.ja.md) | [한국어](./README.ko.md) | [Español](./README.es.md)
 
 Install a UI language pack into the [Google Antigravity](https://antigravity.google/) desktop app with one command, and restore the official build byte for byte at any time.
 
@@ -103,7 +103,7 @@ See [CONTRIBUTING.md](./CONTRIBUTING.md) for the pack format, and run `npm test`
 
 ## Disclaimer
 
-1. **This project is for personal learning, study, and research purposes only. Please do not use it for commercial purposes.**
+1. Use this project only where permitted by applicable laws, contracts, and the Antigravity terms. You are responsible for ensuring your use is compliant.
 2. This is an independent open-source tool and is not affiliated with, endorsed by, or authorized by Google. Antigravity and related trademarks belong to their respective owners.
 3. Modifying the client is at your own risk. The authors assume no responsibility for any unexpected issues, data loss, or other consequences.
 

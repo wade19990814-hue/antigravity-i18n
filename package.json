@@ -60,7 +60,7 @@
     "src/",
     "CONTRIBUTING.md",
     "README.md",
-    "README.zh-CN.md",
+    "README.*.md",
     "LICENSE"
   ]
 }
