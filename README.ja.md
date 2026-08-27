@@ -1,6 +1,6 @@
 # antigravity-i18n
 
-[English](./README.md) | [简体中文](./README.zh-CN.md) | 日本語 | [한국어](./README.ko.md) | [Español](./README.es.md)
+[English](./README.md) | [简体中文](./README.zh-CN.md) | 日本語 | [한국어](./README.ko.md) | [Español](./README.es.md) | [Deutsch](./README.de.md) | [Français](./README.fr.md) | [Português do Brasil](./README.pt-BR.md) | [Русский](./README.ru.md)
 
 1つのコマンドで [Google Antigravity](https://antigravity.google/) デスクトップアプリにUI言語パックを適用し、いつでも公式版へバイト単位で復元できます。
 
@@ -13,7 +13,7 @@
 ## 特長
 
 - **インストール不要**：1つの `npx` コマンドで直接実行でき、インストール先の検出とアプリの再起動も自動で行います。
-- **多言語対応**：言語データはすべて `src/locales/` のJSONパックに分離されています。翻訳エンジン自体は特定の言語に依存しません。簡体字中国語、日本語、韓国語、スペイン語を内蔵しています。
+- **多言語対応**：言語データはすべて `src/locales/` のJSONパックに分離されています。翻訳エンジン自体は特定の言語に依存しません。簡体字中国語、日本語、韓国語、スペイン語、ドイツ語、フランス語、ブラジルポルトガル語、ロシア語を内蔵しています。
 - **非侵襲的**：シェルUIとネイティブメニューだけを翻訳します。コードエディター（Monaco）、ターミナル（xterm）、会話領域には触れません。
 - **バイト単位の復元**：初回実行時に元の `app.asar` をバックアップし、`restore` で公式アーカイブを変更前の状態へ戻します。
 - **オフラインかつプライベート**：ネットワーク通信やテレメトリーはなく、トークン、セッション、認証情報にはアクセスしません。
@@ -34,6 +34,10 @@ npx antigravity-i18n apply --locale ja
 # 簡体字中国語: npx antigravity-i18n apply --locale zh-CN
 # 한국어: npx antigravity-i18n apply --locale ko
 # Español: npx antigravity-i18n apply --locale es
+# Deutsch: npx antigravity-i18n apply --locale de
+# Français: npx antigravity-i18n apply --locale fr
+# Português do Brasil: npx antigravity-i18n apply --locale pt-BR
+# Русский: npx antigravity-i18n apply --locale ru
 
 # 公式版へ復元
 npx antigravity-i18n restore
