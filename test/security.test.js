@@ -148,18 +148,18 @@ check('poisoned clean backups are replaced only by verified pristine archives', 
     assert.strictEqual(fs.readFileSync(clean, 'utf8'), 'official archive');
 }));
 
-check('restoring an already-English app refreshes backup without rewriting app.asar', () => withTempDir((dir) => {
+check('restore refuses an unrelated archive before refreshing the clean backup', () => withTempDir((dir) => {
     const resources = path.join(dir, 'resources');
     const asar = path.join(resources, 'app.asar');
     fs.mkdirSync(resources);
-    fs.writeFileSync(asar, 'current official archive');
-    fs.writeFileSync(path.join(resources, 'app.asar.clean-backup'), 'stale official archive');
-    restoreOfficial({ appDir: dir, restart: false, noKill: true });
-    assert.strictEqual(fs.readFileSync(asar, 'utf8'), 'current official archive');
-    assert.strictEqual(
-        fs.readFileSync(path.join(resources, 'app.asar.clean-backup'), 'utf8'),
-        'current official archive'
+    const clean = path.join(resources, 'app.asar.clean-backup');
+    fs.writeFileSync(asar, 'not an Antigravity archive');
+    fs.writeFileSync(clean, 'known-good backup');
+    assert.throws(
+        () => restoreOfficial({ appDir: dir, restart: false, noKill: true }),
+        /Could not verify Antigravity archive identity/
     );
+    assert.strictEqual(fs.readFileSync(clean, 'utf8'), 'known-good backup');
 }));
 
 check('backup names never overwrite an existing same-second backup', () => withTempDir((dir) => {
@@ -178,6 +178,37 @@ check('process control remains shell-free and never targets generic language ser
  * Packing an archive is asynchronous, so this check runs after the synchronous
  * ones rather than inside withTempDir, whose cleanup is synchronous.
  */
+async function checkAlreadyEnglishRestore() {
+    const name = 'restoring an already-English app refreshes backup without rewriting app.asar';
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'antigravity-i18n-restore-'));
+    try {
+        const resources = path.join(dir, 'resources');
+        const source = path.join(dir, 'source');
+        const archive = path.join(resources, 'app.asar');
+        const clean = path.join(resources, 'app.asar.clean-backup');
+        fs.mkdirSync(resources);
+        fs.mkdirSync(source);
+        fs.writeFileSync(
+            path.join(source, 'package.json'),
+            JSON.stringify({ name: 'antigravity', version: '2.0.0' })
+        );
+        await require('@electron/asar').createPackageWithOptions(source, archive, {});
+        const original = fs.readFileSync(archive);
+        fs.writeFileSync(clean, 'stale official archive');
+
+        restoreOfficial({ appDir: dir, restart: false, noKill: true });
+
+        assert.deepStrictEqual(fs.readFileSync(archive), original, 'live archive was rewritten');
+        assert.deepStrictEqual(fs.readFileSync(clean), original, 'clean backup was not refreshed');
+        console.log('  ok   ' + name);
+    } catch (err) {
+        failures += 1;
+        console.error('  FAIL ' + name + ': ' + err.message);
+    } finally {
+        fs.rmSync(dir, { recursive: true, force: true });
+    }
+}
+
 async function checkArchiveCacheInvalidation() {
     const name = 'replacing an archive invalidates the memoised asar header';
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'antigravity-i18n-cache-'));
@@ -211,7 +242,7 @@ async function checkArchiveCacheInvalidation() {
     }
 }
 
-checkArchiveCacheInvalidation().then(() => {
+checkAlreadyEnglishRestore().then(checkArchiveCacheInvalidation).then(() => {
     if (failures > 0) {
         console.error('\n' + failures + ' security check(s) failed.');
         process.exit(1);

@@ -18,8 +18,8 @@ const {
     loadLocale
 } = require('./locale');
 
-// Markers injected by our patch fragments. Presence of any of these inside the
-// Any of these inside the packed archive means a localization patch is present.
+// Markers injected by our patch fragments. Any of these inside the packed
+// archive means a localization patch is present.
 // installLocalePatch is emitted by the current engine; installZhCNPatch and
 // zhCNText are legacy markers from versions that predated locale files, kept so
 // an install patched by an older release is still recognised.
@@ -694,6 +694,13 @@ function restoreOfficial(options = {}) {
     if (currentPatchState === null) {
         throw new Error(`Could not read Antigravity archive: ${asarPath}`);
     }
+    // Verify the archive before refreshing or restoring a clean backup. Without
+    // this guard, a mistaken --app-dir containing an unrelated app.asar could
+    // overwrite the known-good backup even though the live archive is untouched.
+    const expectedIdentity = readArchiveIdentity(asarPath);
+    if (!expectedIdentity || expectedIdentity.name !== 'antigravity') {
+        throw new Error(`Could not verify Antigravity archive identity: ${asarPath}`);
+    }
     if (currentPatchState === false) {
         // After an official update the app is already English, while the clean
         // backup may still belong to the previous release. Refresh the backup
@@ -702,11 +709,6 @@ function restoreOfficial(options = {}) {
         atomicReplaceFile(asarPath, cleanBackupPath);
         writeState(statePath, 'en', asarPath);
         return;
-    }
-
-    const expectedIdentity = readArchiveIdentity(asarPath);
-    if (!expectedIdentity || expectedIdentity.name !== 'antigravity') {
-        throw new Error(`Could not verify Antigravity archive identity: ${asarPath}`);
     }
 
     ensureRestorableCleanBackup(resourcesDir, cleanBackupPath, expectedIdentity);
