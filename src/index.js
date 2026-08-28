@@ -2,14 +2,9 @@ const fs = require('fs');
 const path = require('path');
 const os = require('os');
 const { execFileSync } = require('child_process');
-const {
-    resolveAppPaths,
-    stopAntigravityProcesses,
-    launchAntigravity,
-    isAntigravityRunning,
-    readState,
-    writeState
-} = require('./detector');
+// Accessed through the module object rather than destructured so the e2e tests
+// can stub the process probes when patching a fixture install.
+const detector = require('./detector');
 const {
     DEFAULT_LOCALE,
     buildMenuFragment,
@@ -235,6 +230,25 @@ function createUniqueBackupPath(resourcesDir, fileName) {
     return candidate;
 }
 
+// Timestamped snapshots are safety copies and grow with every run, so point
+// out that they can be pruned once the install proves itself. The clean
+// backup is what restore actually needs.
+const BACKUP_NOTE_THRESHOLD = 5;
+function noteBackupAccumulation(resourcesDir) {
+    let count;
+    try {
+        count = fs.readdirSync(resourcesDir).filter((f) => f.startsWith('app.asar.bak-')).length;
+    } catch {
+        return;
+    }
+    if (count > BACKUP_NOTE_THRESHOLD) {
+        console.log(
+            `  Note: ${count} timestamped app.asar.bak-* snapshots have accumulated. Older ones can be `
+            + 'deleted to free space; app.asar.clean-backup alone is enough to restore.'
+        );
+    }
+}
+
 /**
  * Replace a file without copying directly over the live destination.
  *
@@ -275,7 +289,7 @@ function ensureStoppedForModification(options = {}) {
         closeAntigravityOrThrow(options);
         return;
     }
-    if (isAntigravityRunning()) {
+    if (detector.isAntigravityRunning()) {
         throw new Error(
             'Antigravity is still running. --no-kill never terminates it; close the app first and re-run.'
         );
@@ -295,7 +309,7 @@ function ensureStoppedForModification(options = {}) {
  */
 function closeAntigravityOrThrow(options = {}) {
     console.log('Requesting Antigravity to close (waiting for it to save state)...');
-    const result = stopAntigravityProcesses({ force: options.force === true });
+    const result = detector.stopAntigravityProcesses({ force: options.force === true });
 
     if (!result.wasRunning) {
         console.log('  Antigravity was not running.');
@@ -431,11 +445,11 @@ function normalizeLanguage(language) {
 }
 
 function getStatus(options = {}) {
-    const { appDir, asarPath, cleanBackupPath, statePath } = resolveAppPaths(options.appDir);
+    const { appDir, asarPath, cleanBackupPath, statePath } = detector.resolveAppPaths(options.appDir);
     const hasCleanBackup = fs.existsSync(cleanBackupPath);
 
     const detected = detectPatchInArchive(asarPath);
-    const state = readState(statePath);
+    const state = detector.readState(statePath);
 
     // The archive itself is the source of truth. The marker only supplies extra
     // context, and is reported as stale when the two disagree (which happens
@@ -470,6 +484,11 @@ function getStatus(options = {}) {
     };
 }
 
+function backupStamp(name) {
+    const match = name.match(/\d{8}-\d{6}/);
+    return match ? match[0] : '';
+}
+
 /**
  * Find an unpatched archive among the timestamped backups.
  *
@@ -486,12 +505,14 @@ function findPristineArchive(resourcesDir, expectedIdentity) {
     try {
         names = fs.readdirSync(resourcesDir)
             .filter((f) => f.startsWith('app.asar.bak-'))
-            // Backup names embed yyyyMMdd-HHmmss, so a descending sort is newest
-            // first. The newest clean archive is preferred because an older one can
-            // belong to a previous Antigravity release and would silently downgrade
-            // app.asar out of sync with app.asar.unpacked and native modules.
-            .sort()
-            .reverse();
+            // Backup names embed yyyyMMdd-HHmmss, but a restore also writes
+            // bak-before-restore-<stamp> names, so ordering by the whole file
+            // name would interleave the two schemes. Sort by the stamp itself,
+            // newest first: the newest clean archive is preferred because an
+            // older one can belong to a previous Antigravity release and would
+            // silently downgrade app.asar out of sync with app.asar.unpacked
+            // and native modules.
+            .sort((a, b) => backupStamp(b).localeCompare(backupStamp(a)));
     } catch {
         return null;
     }
@@ -559,7 +580,7 @@ function ensureRestorableCleanBackup(resourcesDir, cleanBackupPath, expectedIden
  * @param {string} [options.locale] Locale code to install.
  */
 async function applyLocale(options = {}) {
-    const { appDir, resourcesDir, asarPath, cleanBackupPath, statePath } = resolveAppPaths(options.appDir);
+    const { appDir, resourcesDir, asarPath, cleanBackupPath, statePath } = detector.resolveAppPaths(options.appDir);
     // Locale data is validated before anything is modified, so a malformed
     // locale fails fast instead of producing a broken UI after the rewrite.
     const localeCode = options.locale || DEFAULT_LOCALE;
@@ -586,7 +607,10 @@ async function applyLocale(options = {}) {
     // Also create timestamped backup
     const stamp = getFormatTimestamp();
     const backupPath = createUniqueBackupPath(resourcesDir, `app.asar.bak-${stamp}`);
-    fs.copyFileSync(asarPath, backupPath);
+    // COPYFILE_EXCL turns a same-second naming race into a loud failure
+    // instead of silently overwriting an existing backup.
+    fs.copyFileSync(asarPath, backupPath, fs.constants.COPYFILE_EXCL);
+    noteBackupAccumulation(resourcesDir);
 
     const tmpRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'antigravity-i18n-patch-'));
     const extractDir = path.join(tmpRoot, 'app');
@@ -667,13 +691,13 @@ async function applyLocale(options = {}) {
         }
 
         atomicReplaceFile(packedPath, asarPath);
-        writeState(statePath, locale.language, asarPath);
+        detector.writeState(statePath, locale.language, asarPath);
         console.log(`✓ Successfully switched to ${locale.name} (${locale.language})! (app.asar updated)`);
         console.log(`  Backup saved at: ${backupPath}`);
 
         if (options.restart !== false) {
             console.log('Restarting Antigravity...');
-            launchAntigravity(appDir);
+            detector.launchAntigravity(appDir);
         }
     } finally {
         try {
@@ -688,7 +712,7 @@ async function applyLocale(options = {}) {
  * Restore the official untranslated archive.
  */
 function restoreOfficial(options = {}) {
-    const { appDir, resourcesDir, asarPath, cleanBackupPath, statePath } = resolveAppPaths(options.appDir);
+    const { appDir, resourcesDir, asarPath, cleanBackupPath, statePath } = detector.resolveAppPaths(options.appDir);
 
     const currentPatchState = detectPatchInArchive(asarPath);
     if (currentPatchState === null) {
@@ -707,7 +731,7 @@ function restoreOfficial(options = {}) {
         // and avoid needlessly stopping or rewriting the running application.
         console.log('Antigravity is already using the official English archive.');
         atomicReplaceFile(asarPath, cleanBackupPath);
-        writeState(statePath, 'en', asarPath);
+        detector.writeState(statePath, 'en', asarPath);
         return;
     }
 
@@ -717,16 +741,17 @@ function restoreOfficial(options = {}) {
     // Create a safety backup of current state
     const stamp = getFormatTimestamp();
     const backupPath = createUniqueBackupPath(resourcesDir, `app.asar.bak-before-restore-${stamp}`);
-    fs.copyFileSync(asarPath, backupPath);
+    fs.copyFileSync(asarPath, backupPath, fs.constants.COPYFILE_EXCL);
+    noteBackupAccumulation(resourcesDir);
 
     console.log('Restoring original clean app.asar...');
     atomicReplaceFile(cleanBackupPath, asarPath);
-    writeState(statePath, 'en', asarPath);
+    detector.writeState(statePath, 'en', asarPath);
     console.log('✓ Successfully switched back to official English version!');
 
     if (options.restart !== false) {
         console.log('Restarting Antigravity...');
-        launchAntigravity(appDir);
+        detector.launchAntigravity(appDir);
     }
 }
 

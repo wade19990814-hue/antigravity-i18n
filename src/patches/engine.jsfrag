@@ -91,7 +91,6 @@ const agValueRules = Object.fromEntries(
     ])
 );
 
-const agExactTextTags = new Set(['BUTTON', 'SUMMARY', 'LABEL', 'OPTION', 'LEGEND', 'H1', 'H2', 'H3', 'H4', 'H5', 'H6']);
 const agAttributeNames = ['aria-label', 'title', 'placeholder', 'data-tooltip', 'alt'];
 const agSkipSelector = [
     'script',
@@ -259,13 +258,6 @@ function shouldTranslateTextNode(node) {
     const trimmed = node.nodeValue?.trim();
     if (!trimmed || !hasTranslation(trimmed)) {
         return false;
-    }
-    if (agExactTextTags.has(parent.tagName)) {
-        return true;
-    }
-    const role = parent.getAttribute('role');
-    if (role && /^(button|menuitem|tab|option|checkbox|radio|switch|heading|link|alert|status)$/.test(role)) {
-        return true;
     }
     return true;
 }

@@ -23,11 +23,13 @@
     },
     "englishName": {
       "type": "string",
-      "description": "English display name used in CLI listings, e.g. Simplified Chinese."
+      "description": "English display name, e.g. Simplified Chinese.",
+      "minLength": 1
     },
     "htmlLang": {
       "type": "string",
-      "description": "Value written to <html lang>. Defaults to 'language' when omitted."
+      "description": "Value written to <html lang>. Defaults to 'language' when omitted.",
+      "pattern": "^[A-Za-z]{2,3}(-[A-Za-z0-9]{2,8})*$"
     },
     "dir": {
       "enum": ["ltr", "rtl"],

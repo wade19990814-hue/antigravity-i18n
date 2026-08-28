@@ -190,6 +190,10 @@ function validateLocale(code, locale) {
     if (typeof locale.name !== 'string' || !locale.name.trim()) {
         throw new Error(`Locale '${code}': 'name' must be a non-empty string.`);
     }
+    if (locale.englishName !== undefined
+        && (typeof locale.englishName !== 'string' || !locale.englishName.trim())) {
+        throw new Error(`Locale '${code}': 'englishName' must be a non-empty string.`);
+    }
 
     // A right-to-left language that does not declare its direction would be
     // fully translated yet still laid out left to right, which is a silent
@@ -204,6 +208,18 @@ function validateLocale(code, locale) {
         );
     }
 
+    // htmlLang becomes <html lang> and chromiumLang becomes Chromium's --lang
+    // switch; both are injected into the app, so reject malformed values here
+    // instead of failing later at apply time.
+    if (locale.htmlLang !== undefined
+        && (typeof locale.htmlLang !== 'string' || !LOCALE_CODE_RE.test(locale.htmlLang))) {
+        throw new Error(`Locale '${code}': 'htmlLang' must be a BCP 47 code.`);
+    }
+    if (locale.chromiumLang !== undefined
+        && (typeof locale.chromiumLang !== 'string' || !/^[A-Za-z0-9-]+$/.test(locale.chromiumLang))) {
+        throw new Error(`Locale '${code}': 'chromiumLang' must only contain letters, digits and hyphens.`);
+    }
+
     // pluralLocale lets a regional file borrow another language's plural rules
     // when its own code is not a language Intl.PluralRules recognises.
     if (locale.pluralLocale !== undefined
@@ -212,6 +228,28 @@ function validateLocale(code, locale) {
     }
 
     validateStringMap(code, 'text', locale.text);
+    // The engine re-processes text it just wrote, so a translation that equals
+    // another source key is looked up again. Walk each chain: it is safe when
+    // it leaves the dictionary or reaches a fixed point (a key whose value is
+    // itself, where the rewrite stops), and an error when it revisits a key,
+    // which would translate in a cycle forever.
+    for (const startKey of Object.keys(locale.text)) {
+        const visited = new Set([startKey]);
+        let value = locale.text[startKey];
+        while (Object.prototype.hasOwnProperty.call(locale.text, value)) {
+            if (locale.text[value] === value) {
+                break;
+            }
+            if (visited.has(value)) {
+                throw new Error(
+                    `Locale '${code}': translation of '${startKey}' re-enters the dictionary through `
+                    + `'${value}', so the injected engine would re-translate its own output in a cycle.`
+                );
+            }
+            visited.add(value);
+            value = locale.text[value];
+        }
+    }
     if (locale.allowSourceEqual !== undefined) {
         if (!Array.isArray(locale.allowSourceEqual)
             || locale.allowSourceEqual.some((key) => typeof key !== 'string' || !key)) {

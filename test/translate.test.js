@@ -234,6 +234,30 @@ check('the engine emits <html dir> only when the pack declares one', () => {
     assert.ok(!/"dir":/.test(buildPreloadFragment(pack({}))), 'dir leaked into an LTR pack');
 });
 
+console.log('\nMetadata and re-translation cycles:');
+
+check('a translation chain ending at a fixed point is accepted', () => {
+    // French translates 'App' to 'Application', and 'Application' is itself a
+    // source entry whose translation equals itself, so the rewrite stops there.
+    assert.doesNotThrow(() => validateLocale('fr', pack({
+        language: 'fr',
+        name: 'Français',
+        text: { App: 'Application', Application: 'Application' },
+        allowSourceEqual: ['Application']
+    })));
+});
+
+check('a translation cycle is rejected before injection', () => {
+    assert.throws(() => validateLocale('de', pack({
+        text: { Settings: 'Preferences', Preferences: 'Settings' }
+    })), /cycle/);
+});
+
+check('an unusable htmlLang or chromiumLang is rejected at load time', () => {
+    assert.throws(() => validateLocale('de', pack({ htmlLang: '"><script>' })), /htmlLang/);
+    assert.throws(() => validateLocale('de', pack({ chromiumLang: "a'); evil(); ('" })), /chromiumLang/);
+});
+
 if (failures > 0) {
     console.error('\n' + failures + ' translation check(s) failed.');
     process.exit(1);
