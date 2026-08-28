@@ -1,6 +1,6 @@
 {
   "name": "antigravity-i18n",
-  "version": "2.0.0",
+  "version": "2.1.0",
   "description": "为 Google Antigravity 桌面端安装界面语言包，并支持一条命令还原官方版本。Multi-language localization for the Antigravity desktop app, with byte-exact restore.",
   "main": "src/index.js",
   "bin": {
