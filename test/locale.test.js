@@ -92,6 +92,22 @@ for (const code of locales) {
     });
 }
 
+console.log('Locale aliases:');
+check('zh and zh-Hans resolve onto the Simplified Chinese pack', () => {
+    const canonical = loadLocale('zh-CN');
+    for (const spelling of ['zh', 'ZH', 'zh-Hans', 'zh-hans', 'ZH-HANS']) {
+        assert.deepStrictEqual(loadLocale(spelling), canonical, `'${spelling}' did not resolve to zh-CN`);
+    }
+});
+
+check('bundled codes match regardless of casing', () => {
+    assert.deepStrictEqual(loadLocale('zh-hant'), loadLocale('zh-Hant'));
+});
+
+check('unknown locale codes still fail with the available list', () => {
+    assert.throws(() => loadLocale('xx'), /Unknown locale/);
+});
+
 if (failures > 0) {
     console.error(`\n${failures} locale check(s) failed.`);
     process.exit(1);

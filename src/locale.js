@@ -39,6 +39,12 @@ function listLocales() {
     }
 }
 
+// Spellings that resolve onto a bundled pack instead of naming a file of
+// their own: 'zh' and 'zh-Hans' (any casing) both mean the Simplified Chinese
+// pack shipped as zh-CN. Matching itself is case-insensitive, so 'zh-hant'
+// resolves onto the zh-Hant file without a separate alias.
+const LOCALE_ALIASES = { 'zh': 'zh-CN', 'zh-hans': 'zh-CN' };
+
 /**
  * Load and validate a locale definition.
  *
@@ -48,20 +54,25 @@ function listLocales() {
  */
 function loadLocale(code = DEFAULT_LOCALE) {
     const availableLocales = listLocales();
-    if (typeof code !== 'string' || !LOCALE_CODE_RE.test(code) || !availableLocales.includes(code)) {
+    const requested = typeof code === 'string' && LOCALE_CODE_RE.test(code)
+        ? code.toLowerCase()
+        : null;
+    const resolved = requested
+        && (availableLocales.find((name) => name.toLowerCase() === requested) || LOCALE_ALIASES[requested]);
+    if (!resolved) {
         const available = availableLocales.join(', ') || 'none';
         throw new Error(`Unknown locale '${String(code)}'. Available locales: ${available}`);
     }
-    const file = path.join(LOCALES_DIR, `${code}.json`);
+    const file = path.join(LOCALES_DIR, `${resolved}.json`);
 
     let locale;
     try {
         locale = JSON.parse(fs.readFileSync(file, 'utf8'));
     } catch (err) {
-        throw new Error(`Locale '${code}' is not valid JSON: ${err.message}`);
+        throw new Error(`Locale '${resolved}' is not valid JSON: ${err.message}`);
     }
 
-    validateLocale(code, locale);
+    validateLocale(resolved, locale);
     return locale;
 }
 
