@@ -13,7 +13,7 @@
 ## 特長
 
 - **インストール不要**：1つの `npx` コマンドで直接実行でき、インストール先の検出とアプリの再起動も自動で行います。
-- **多言語対応**：言語データはすべて `src/locales/` のJSONパックに分離されています。翻訳エンジン自体は特定の言語に依存しません。簡体字中国語、日本語、韓国語、スペイン語、ドイツ語、フランス語、ブラジルポルトガル語、ロシア語を内蔵しています。
+- **多言語対応**：言語データはすべて `src/locales/` のJSONパックに分離されています。翻訳エンジン自体は特定の言語に依存しません。簡体字中国語、繁体字中国語、日本語、韓国語、スペイン語、ドイツ語、フランス語、ブラジルポルトガル語、ロシア語を内蔵しています。
 - **非侵襲的**：シェルUIとネイティブメニューだけを翻訳します。コードエディター（Monaco）、ターミナル（xterm）、会話領域には触れません。
 - **バイト単位の復元**：初回実行時に元の `app.asar` をバックアップし、`restore` で公式アーカイブを変更前の状態へ戻します。
 - **オフラインかつプライベート**：ネットワーク通信やテレメトリーはなく、トークン、セッション、認証情報にはアクセスしません。
@@ -32,6 +32,7 @@ Node.js 16以上が必要です。
 npx antigravity-i18n apply --locale ja
 
 # 簡体字中国語: npx antigravity-i18n apply --locale zh-CN
+# 繁體中文: npx antigravity-i18n apply --locale zh-Hant
 # 한국어: npx antigravity-i18n apply --locale ko
 # Español: npx antigravity-i18n apply --locale es
 # Deutsch: npx antigravity-i18n apply --locale de

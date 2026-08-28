@@ -13,7 +13,7 @@ Installiere mit einem einzigen Befehl ein UI-Sprachpaket in der Desktop-App [Goo
 ## Funktionen
 
 - **Keine dauerhafte Installation**: Direkt mit einem einzigen `npx`-Befehl ausführen. Installationspfad und Neustart der App werden automatisch erledigt.
-- **Mehrsprachig**: Alle Sprachdaten liegen in JSON-Paketen unter `src/locales/`. Die Übersetzungs-Engine selbst enthält keine sprachspezifischen Daten. Chinesisch (vereinfacht), Japanisch, Koreanisch, Spanisch, Deutsch, Französisch, brasilianisches Portugiesisch und Russisch sind enthalten.
+- **Mehrsprachig**: Alle Sprachdaten liegen in JSON-Paketen unter `src/locales/`. Die Übersetzungs-Engine selbst enthält keine sprachspezifischen Daten. Chinesisch (vereinfacht), Chinesisch (traditionell), Japanisch, Koreanisch, Spanisch, Deutsch, Französisch, brasilianisches Portugiesisch und Russisch sind enthalten.
 - **Nicht invasiv**: Nur die App-Oberfläche und native Menüs werden übersetzt. Code-Editor (Monaco), Terminal (xterm) und Unterhaltungsbereiche bleiben unverändert.
 - **Bytegenaue Wiederherstellung**: Beim ersten Lauf wird die originale `app.asar` gesichert. `restore` stellt das offizielle Archiv unverändert wieder her.
 - **Offline und privat**: Keine Netzwerkanfragen, keine Telemetrie und kein Zugriff auf Tokens, Sitzungen oder Zugangsdaten.
@@ -32,6 +32,7 @@ Erfordert Node.js 16 oder neuer.
 npx antigravity-i18n apply --locale de
 
 # 简体中文: npx antigravity-i18n apply --locale zh-CN
+# 繁體中文: npx antigravity-i18n apply --locale zh-Hant
 # 日本語: npx antigravity-i18n apply --locale ja
 # 한국어: npx antigravity-i18n apply --locale ko
 # Español: npx antigravity-i18n apply --locale es

@@ -13,7 +13,7 @@ Installez en une seule commande un paquet de langue pour l'interface de l'applic
 ## Fonctionnalités
 
 - **Sans installation permanente** : exécution directe avec une seule commande `npx`. Le chemin d'installation est détecté et l'application est redémarrée automatiquement.
-- **Multilingue** : toutes les données linguistiques sont stockées dans des paquets JSON sous `src/locales/`. Le moteur de traduction ne contient aucune donnée propre à une langue. Le chinois simplifié, le japonais, le coréen, l'espagnol, l'allemand, le français, le portugais brésilien et le russe sont inclus.
+- **Multilingue** : toutes les données linguistiques sont stockées dans des paquets JSON sous `src/locales/`. Le moteur de traduction ne contient aucune donnée propre à une langue. Le chinois simplifié, le chinois traditionnel, le japonais, le coréen, l'espagnol, l'allemand, le français, le portugais brésilien et le russe sont inclus.
 - **Non intrusif** : seuls l'interface générale et les menus natifs sont traduits. L'éditeur de code (Monaco), le terminal (xterm) et les zones de conversation restent intacts.
 - **Restauration exacte** : le fichier `app.asar` d'origine est sauvegardé lors de la première exécution. `restore` remet en place l'archive officielle sans aucune modification.
 - **Hors ligne et privé** : aucune requête réseau, aucune télémétrie et aucun accès aux jetons, sessions ou identifiants.
@@ -32,6 +32,7 @@ Node.js 16 ou version ultérieure est requis.
 npx antigravity-i18n apply --locale fr
 
 # 简体中文: npx antigravity-i18n apply --locale zh-CN
+# 繁體中文: npx antigravity-i18n apply --locale zh-Hant
 # 日本語: npx antigravity-i18n apply --locale ja
 # 한국어: npx antigravity-i18n apply --locale ko
 # Español: npx antigravity-i18n apply --locale es

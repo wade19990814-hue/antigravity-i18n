@@ -13,7 +13,7 @@
 ## 주요 기능
 
 - **별도 설치 불필요**: 하나의 `npx` 명령으로 바로 실행하며, 설치 경로 감지와 앱 재시작도 자동으로 처리합니다.
-- **다국어 지원**: 언어 데이터는 모두 `src/locales/` 아래의 JSON 팩으로 분리되어 있습니다. 번역 엔진 자체는 특정 언어에 의존하지 않습니다. 중국어 간체, 일본어, 한국어, 스페인어, 독일어, 프랑스어, 브라질 포르투갈어, 러시아어가 기본 제공됩니다.
+- **다국어 지원**: 언어 데이터는 모두 `src/locales/` 아래의 JSON 팩으로 분리되어 있습니다. 번역 엔진 자체는 특정 언어에 의존하지 않습니다. 중국어 간체, 중국어 번체, 일본어, 한국어, 스페인어, 독일어, 프랑스어, 브라질 포르투갈어, 러시아어가 기본 제공됩니다.
 - **비침습적**: 셸 UI와 네이티브 메뉴만 번역합니다. 코드 편집기(Monaco), 터미널(xterm), 대화 영역은 변경하지 않습니다.
 - **바이트 단위 복원**: 처음 실행할 때 원본 `app.asar`를 백업하며, `restore`로 공식 아카이브를 변경 전 상태 그대로 되돌립니다.
 - **오프라인 및 개인정보 보호**: 네트워크 요청과 원격 측정이 없으며 토큰, 세션, 자격 증명에 접근하지 않습니다.
@@ -32,6 +32,7 @@ Node.js 16 이상이 필요합니다.
 npx antigravity-i18n apply --locale ko
 
 # 简体中文: npx antigravity-i18n apply --locale zh-CN
+# 繁體中文: npx antigravity-i18n apply --locale zh-Hant
 # 日本語: npx antigravity-i18n apply --locale ja
 # Español: npx antigravity-i18n apply --locale es
 # Deutsch: npx antigravity-i18n apply --locale de

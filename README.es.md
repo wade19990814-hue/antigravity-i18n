@@ -13,7 +13,7 @@ Instala un paquete de idioma para la interfaz de la aplicación de escritorio [G
 ## Características
 
 - **Sin instalación permanente**: ejecútalo directamente con un único comando `npx`. Detecta la ruta de instalación y reinicia la aplicación automáticamente.
-- **Multilingüe**: los datos de cada idioma viven en paquetes JSON bajo `src/locales/`. El motor de traducción no contiene datos específicos de ningún idioma. Incluye chino simplificado, japonés, coreano, español, alemán, francés, portugués de Brasil y ruso.
+- **Multilingüe**: los datos de cada idioma viven en paquetes JSON bajo `src/locales/`. El motor de traducción no contiene datos específicos de ningún idioma. Incluye chino simplificado, chino tradicional, japonés, coreano, español, alemán, francés, portugués de Brasil y ruso.
 - **No invasivo**: traduce únicamente la interfaz general y los menús nativos. No modifica el editor de código (Monaco), la terminal (xterm) ni las áreas de conversación.
 - **Restauración exacta**: guarda una copia del `app.asar` original durante la primera ejecución. `restore` recupera el archivo oficial byte por byte.
 - **Privado y sin conexión**: no realiza solicitudes de red, no incluye telemetría y no accede a tokens, sesiones ni credenciales.
@@ -32,6 +32,7 @@ Requiere Node.js 16 o posterior.
 npx antigravity-i18n apply --locale es
 
 # 简体中文: npx antigravity-i18n apply --locale zh-CN
+# 繁體中文: npx antigravity-i18n apply --locale zh-Hant
 # 日本語: npx antigravity-i18n apply --locale ja
 # 한국어: npx antigravity-i18n apply --locale ko
 # Deutsch: npx antigravity-i18n apply --locale de

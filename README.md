@@ -13,7 +13,7 @@ Install a UI language pack into the [Google Antigravity](https://antigravity.goo
 ## Features
 
 - **Zero-install**: Run directly with a single `npx` command. Finds the installation path and restarts the app for you.
-- **Any language**: Language data lives entirely in JSON packs under `src/locales/`. The translation engine holds no language of its own, so adding a language means adding a file. Simplified Chinese, Japanese, Korean, Spanish, German, French, Brazilian Portuguese, and Russian ship in the box.
+- **Any language**: Language data lives entirely in JSON packs under `src/locales/`. The translation engine holds no language of its own, so adding a language means adding a file. Simplified Chinese, Traditional Chinese, Japanese, Korean, Spanish, German, French, Brazilian Portuguese, and Russian ship in the box.
 - **Non-invasive**: Translates only the shell UI and native menus. Code editors (Monaco), terminals (xterm), and conversation areas are left alone.
 - **Byte-exact restore**: Backs up the original `app.asar` on first run. `restore` puts the official archive back unchanged.
 - **Offline & private**: No network requests, no telemetry, and no access to tokens, sessions, or credentials.
@@ -30,6 +30,7 @@ Requires Node.js (≥16).
 ```bash
 # Install a language pack (Simplified Chinese is the default)
 npx antigravity-i18n apply --locale zh-CN
+# 繁體中文: npx antigravity-i18n apply --locale zh-Hant
 # 日本語: npx antigravity-i18n apply --locale ja
 # 한국어: npx antigravity-i18n apply --locale ko
 # Español: npx antigravity-i18n apply --locale es
