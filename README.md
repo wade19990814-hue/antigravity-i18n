@@ -85,7 +85,7 @@ Options:
 
 1. **Save your work**: The tool waits up to 20 seconds for the app to exit cleanly. Save unfinished work before running.
 2. **Official updates**: An Antigravity update overwrites `app.asar`. Run `apply` again afterwards.
-3. **Backup files**: The first run creates `app.asar.clean-backup` under `resources`, and a later official update refreshes it from the current unpatched archive. Do not delete it by hand.
+3. **Backup files**: The first run creates `app.asar.clean-backup` under `resources`, and a later official update refreshes it from the current unpatched archive. Do not delete it by hand. Every apply/restore also leaves a timestamped `app.asar.bak-*` snapshot beside it, and these accumulate over time. `app.asar.clean-backup` alone is enough to restore, so once the current install proves itself you can delete older snapshots to free space.
 4. **Switching languages**: Applying a different pack replaces the previous one directly; there is no need to `restore` in between.
 
 ---

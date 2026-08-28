@@ -86,7 +86,7 @@ Options:
 
 1. **Arbeit speichern**: Das Werkzeug wartet bis zu 20 Sekunden, damit die App ihren Zustand speichern und sauber beendet werden kann. Speichere vorher alle offenen Arbeiten.
 2. **Offizielle Updates**: Ein Antigravity-Update überschreibt `app.asar`. Führe danach `apply` erneut aus.
-3. **Sicherungsdateien**: Beim ersten Lauf wird `app.asar.clean-backup` im Verzeichnis `resources` erstellt. Nach einem offiziellen Update wird sie automatisch aus dem aktuellen unveränderten Archiv erneuert. Lösche sie nicht manuell.
+3. **Sicherungsdateien**: Beim ersten Lauf wird `app.asar.clean-backup` im Verzeichnis `resources` erstellt. Nach einem offiziellen Update wird sie automatisch aus dem aktuellen unveränderten Archiv erneuert. Lösche sie nicht manuell. Bei jedem apply/restore wird zusätzlich ein Zeitstempel-Snapshot `app.asar.bak-*` daneben abgelegt, und diese häufen sich mit der Zeit an. Für die Wiederherstellung genügt `app.asar.clean-backup`; sobald sich die aktuelle Installation bewährt hat, kannst du ältere Snapshots löschen, um Speicherplatz freizugeben.
 4. **Sprache wechseln**: Ein anderes Sprachpaket ersetzt das aktive Paket direkt. Ein vorheriges `restore` ist nicht nötig.
 
 ---

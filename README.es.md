@@ -86,7 +86,7 @@ Options:
 
 1. **Guarda tu trabajo**: la herramienta espera hasta 20 segundos para que la aplicación se cierre normalmente y guarde su estado. Guarda cualquier trabajo pendiente antes de ejecutarla.
 2. **Actualizaciones oficiales**: una actualización de Antigravity sobrescribe `app.asar`. Vuelve a ejecutar `apply` después de actualizar.
-3. **Copias de seguridad**: la primera ejecución crea `app.asar.clean-backup` en el directorio `resources`. Después de una actualización oficial se renueva automáticamente desde el archivo actual sin modificar. No la elimines manualmente.
+3. **Copias de seguridad**: la primera ejecución crea `app.asar.clean-backup` en el directorio `resources`. Después de una actualización oficial se renueva automáticamente desde el archivo actual sin modificar. No la elimines manualmente. Cada apply/restore también deja a su lado una instantánea `app.asar.bak-*` con marca de tiempo, y se acumulan con cada ejecución. Para restaurar basta con `app.asar.clean-backup`, así que, cuando la instalación actual haya demostrado ser estable, puedes eliminar las instantáneas antiguas para liberar espacio.
 4. **Cambio de idioma**: al aplicar otro paquete se reemplaza directamente el anterior; no hace falta ejecutar `restore` primero.
 
 ---

@@ -86,7 +86,7 @@ Options:
 
 1. **Enregistrez votre travail** : l'outil attend jusqu'à 20 secondes afin que l'application puisse sauvegarder son état et se fermer normalement. Enregistrez tout travail en cours avant de l'exécuter.
 2. **Mises à jour officielles** : une mise à jour d'Antigravity remplace `app.asar`. Exécutez de nouveau `apply` après la mise à jour.
-3. **Fichiers de sauvegarde** : la première exécution crée `app.asar.clean-backup` dans le dossier `resources`. Après une mise à jour officielle, ce fichier est automatiquement renouvelé depuis l'archive actuelle non modifiée. Ne le supprimez pas manuellement.
+3. **Fichiers de sauvegarde** : la première exécution crée `app.asar.clean-backup` dans le dossier `resources`. Après une mise à jour officielle, ce fichier est automatiquement renouvelé depuis l'archive actuelle non modifiée. Ne le supprimez pas manuellement. Chaque apply/restore laisse également à côté une copie horodatée `app.asar.bak-*`, et celles-ci s'accumulent au fil des exécutions. La restauration ne repose que sur `app.asar.clean-backup` ; une fois l'installation actuelle éprouvée, vous pouvez supprimer les anciennes copies pour libérer de l'espace.
 4. **Changement de langue** : l'application d'un autre paquet remplace directement le paquet actif ; il n'est pas nécessaire d'exécuter `restore` au préalable.
 
 ---
