@@ -5,7 +5,7 @@
  */
 
 const assert = require('assert');
-const { parseArgs, describeLanguage } = require('../bin/cli');
+const { parseArgs, describeLanguage, describeBackup } = require('../bin/cli');
 const { applyLanguageSwitch, normalizeLanguage } = require('../src/index');
 const { DEFAULT_LOCALE, diffLocale, collectSourceStrings, describeLocale, loadLocale, validateLocale } = require('../src/locale');
 
@@ -57,6 +57,13 @@ check('a pre-rename state marker still reports its language', () => {
     assert.strictEqual(normalizeLanguage('zh-CN'), 'zh-CN');
     assert.strictEqual(normalizeLanguage('en'), 'en');
     assert.strictEqual(normalizeLanguage(undefined), 'unknown');
+});
+
+check('only a verified backup is advertised as ready to restore', () => {
+    assert.match(describeBackup('valid'), /Ready for 1-click restore/);
+    for (const status of ['invalid', 'patched', 'version-mismatch', 'missing', undefined]) {
+        assert.ok(!describeBackup(status).includes('Ready for 1-click restore'));
+    }
 });
 
 console.log('\nChromium language switch:');

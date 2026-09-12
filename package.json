@@ -12,7 +12,7 @@
     "status": "node bin/cli.js status",
     "locales": "node bin/cli.js locales",
     "report": "node scripts/locale-report.js",
-    "test": "node --check bin/cli.js && node --check src/index.js && node --check src/detector.js && node --check src/locale.js && node --check scripts/locale-report.js && node test/locale.test.js && node test/dom.test.js && node test/inject.test.js && node test/security.test.js && node test/cli.test.js && node test/translate.test.js && node test/apply.test.js",
+    "test": "node --check bin/cli.js && node --check src/index.js && node --check src/detector.js && node --check src/locale.js && node --check scripts/locale-report.js && node test/locale.test.js && node test/dom.test.js && node test/inject.test.js && node test/security.test.js && node test/cli.test.js && node test/translate.test.js && node test/detector.test.js && node test/dialog.test.js && node test/report.test.js && node test/apply.test.js",
     "prepublishOnly": "npm test"
   },
   "keywords": [

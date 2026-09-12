@@ -6,7 +6,7 @@
  */
 
 const assert = require('assert');
-const { buildMenuFragment, buildPreloadFragment, listLocales, loadLocale, validateLocale } = require('../src/locale');
+const { buildMenuFragment, buildPreloadFragment, buildDialogFragment, listLocales, loadLocale, validateLocale, diffLocale } = require('../src/locale');
 
 let failures = 0;
 
@@ -63,8 +63,18 @@ for (const code of locales) {
         const menu = buildMenuFragment(locale);
         assert.ok(!preload.includes('LOCALE_DATA_PLACEHOLDER'), 'preload placeholder not replaced');
         assert.ok(!preload.includes('allowSourceEqual'), 'report-only allowlist leaked into runtime data');
+        assert.ok(!preload.includes('"dialogs":'), 'native dialog data leaked into the renderer');
         assert.ok(!menu.includes('MENU_DATA_PLACEHOLDER'), 'menu placeholder not replaced');
+        assert.ok(!buildDialogFragment(locale).includes('DIALOG_DATA_PLACEHOLDER'), 'dialog placeholder not replaced');
         assert.ok(preload.includes('installLocalePatch'), 'preload missing install entry point');
+    });
+
+    check(`${code}: covers every source text, menu, dialog and dynamic rule`, () => {
+        const report = diffLocale(code);
+        for (const [kind, missing] of Object.entries(report.missing)) {
+            assert.deepStrictEqual(missing, [], `missing ${kind}: ${missing.join(', ')}`);
+        }
+        assert.deepStrictEqual(report.untranslated, [], 'undeclared untranslated placeholders');
     });
 
     check(`${code}: engine translates dictionary and dynamic patterns`, () => {

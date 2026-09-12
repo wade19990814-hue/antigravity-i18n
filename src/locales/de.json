@@ -21,6 +21,13 @@
     "Tab",
     "Top P"
   ],
+  "dialogs": {
+    "Confirm Quit": "Beenden bestätigen",
+    "Are you sure you want to quit?": "Möchten Sie die Anwendung wirklich beenden?",
+    "There may be agents or background tasks running.": "Möglicherweise werden noch Agenten oder Hintergrundaufgaben ausgeführt.",
+    "Cancel": "Abbrechen",
+    "Quit": "Beenden"
+  },
   "text": {
     "Run": "Ausführen",
     "Agent": "Agent",

@@ -1,6 +1,6 @@
 # antigravity-i18n
 
-[English](./README.md) | [简体中文](./README.zh-CN.md) | [日本語](./README.ja.md) | [한국어](./README.ko.md) | [Español](./README.es.md) | [Deutsch](./README.de.md) | [Français](./README.fr.md) | Português do Brasil | [Русский](./README.ru.md)
+[English](./README.md) | [简体中文](./README.zh-CN.md) | [繁體中文](./README.zh-Hant.md) | [日本語](./README.ja.md) | [한국어](./README.ko.md) | [Español](./README.es.md) | [Deutsch](./README.de.md) | [Français](./README.fr.md) | Português do Brasil | [Русский](./README.ru.md)
 
 Instale com um único comando um pacote de idioma para a interface do aplicativo de desktop [Google Antigravity](https://antigravity.google/) e restaure a versão oficial byte por byte quando quiser.
 
@@ -14,7 +14,7 @@ Instale com um único comando um pacote de idioma para a interface do aplicativo
 
 - **Sem instalação permanente**: execute diretamente com um único comando `npx`. O caminho de instalação é detectado e o aplicativo é reiniciado automaticamente.
 - **Multilíngue**: todos os dados de idioma ficam em pacotes JSON em `src/locales/`. O mecanismo de tradução não contém dados específicos de nenhum idioma. Estão incluídos chinês simplificado, chinês tradicional, japonês, coreano, espanhol, alemão, francês, português do Brasil e russo.
-- **Não invasivo**: somente a interface geral e os menus nativos são traduzidos. O editor de código (Monaco), o terminal (xterm) e as áreas de conversa não são alterados.
+- **Não invasivo**: somente a interface geral, os menus nativos e a caixa de diálogo nativa de confirmação de saída são traduzidos. O editor de código (Monaco), o terminal (xterm) e as áreas de conversa não são alterados.
 - **Restauração exata**: o `app.asar` original é salvo na primeira execução. `restore` recupera o arquivo oficial byte por byte.
 - **Privado e offline**: não faz solicitações de rede, não inclui telemetria e não acessa tokens, sessões nem credenciais.
 - **Plurais e direção de escrita**: textos com quantidades selecionam as formas plurais CLDR por meio de `Intl.PluralRules`; idiomas escritos da direita para a esquerda podem declarar sua direção.
@@ -84,9 +84,9 @@ Options:
 
 ## Observações
 
-1. **Salve seu trabalho**: a ferramenta aguarda até 20 segundos para que o aplicativo salve seu estado e seja fechado normalmente. Salve todo trabalho pendente antes de executar.
-2. **Atualizações oficiais**: uma atualização do Antigravity substitui o `app.asar`. Execute `apply` novamente depois da atualização.
-3. **Arquivos de backup**: a primeira execução cria `app.asar.clean-backup` no diretório `resources`. Depois de uma atualização oficial, ele é renovado automaticamente a partir do arquivo atual sem modificações. Não o exclua manualmente. Cada apply/restore também deixa ao lado um snapshot `app.asar.bak-*` com carimbo de data e hora, e eles se acumulam a cada execução. A restauração usa apenas o `app.asar.clean-backup`, então, quando a instalação atual já estiver estável, você pode excluir os snapshots antigos para liberar espaço.
+1. **Salve seu trabalho**: a ferramenta aguarda até 30 segundos para que o aplicativo salve seu estado e seja fechado normalmente. Salve todo trabalho pendente antes de executar. Se continuar em execução após 30 segundos, ele será encerrado à força; `--force` pula a espera.
+2. **Atualizações oficiais**: uma atualização do Antigravity substitui o `app.asar`. Execute `apply` novamente depois da atualização. Se o arquivo mudar durante apply/restore, a operação será interrompida. Aguarde o término da atualização e execute o comando novamente.
+3. **Arquivos de backup**: a primeira execução cria `app.asar.clean-backup` no diretório `resources`. Depois de uma atualização oficial, ele é renovado automaticamente a partir do arquivo atual sem modificações. Não o exclua manualmente. Cada apply/restore também deixa ao lado um snapshot `app.asar.bak-*` com carimbo de data e hora, e eles se acumulam a cada execução. A restauração usa apenas o `app.asar.clean-backup`, então, quando a instalação atual já estiver estável, você pode excluir os snapshots antigos para liberar espaço. `status` verifica a estrutura do arquivo de backup, os hashes de integridade disponíveis, os marcadores do patch e a versão. Cópias danificadas ou de outra versão não serão indicadas como prontas para restauração.
 4. **Troca de idioma**: aplicar outro pacote substitui diretamente o pacote ativo; não é necessário executar `restore` antes.
 
 ---

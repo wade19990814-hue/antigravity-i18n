@@ -8,6 +8,13 @@
   "allowSourceEqual": [
     "Top P"
   ],
+  "dialogs": {
+    "Confirm Quit": "Подтверждение выхода",
+    "Are you sure you want to quit?": "Вы действительно хотите выйти?",
+    "There may be agents or background tasks running.": "Возможно, ещё работают агенты или выполняются фоновые задачи.",
+    "Cancel": "Отмена",
+    "Quit": "Выйти"
+  },
   "text": {
     "Run": "Запустить",
     "Agent": "Агент",

@@ -11,6 +11,13 @@
     "Local",
     "tokens)"
   ],
+  "dialogs": {
+    "Confirm Quit": "Confirmar salida",
+    "Are you sure you want to quit?": "¿Seguro que quieres salir?",
+    "There may be agents or background tasks running.": "Es posible que haya agentes o tareas en segundo plano en ejecución.",
+    "Cancel": "Cancelar",
+    "Quit": "Salir"
+  },
   "text": {
     "Run": "Ejecutar",
     "Agent": "Agente",

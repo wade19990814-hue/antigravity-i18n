@@ -12,6 +12,13 @@
     "Top P",
     "tokens)"
   ],
+  "dialogs": {
+    "Confirm Quit": "Confirmar saída",
+    "Are you sure you want to quit?": "Tem certeza de que deseja sair?",
+    "There may be agents or background tasks running.": "Pode haver agentes ou tarefas em segundo plano em execução.",
+    "Cancel": "Cancelar",
+    "Quit": "Sair"
+  },
   "text": {
     "Run": "Executar",
     "Agent": "Agente",

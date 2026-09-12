@@ -153,19 +153,17 @@ check('official updates refresh a stale clean backup', () => withTempDir((dir) =
     assert.strictEqual(fs.readFileSync(clean, 'utf8'), 'new official archive');
 }));
 
-check('poisoned clean backups are replaced only by verified pristine archives', () => withTempDir((dir) => {
-    const asar = path.join(dir, 'app.asar');
+check('invalid backups are never accepted just because they lack patch markers', () => withTempDir((dir) => {
+    const archive = path.join(dir, 'app.asar');
     const clean = path.join(dir, 'app.asar.clean-backup');
     const pristine = path.join(dir, 'app.asar.bak-20260101-000000');
-    fs.writeFileSync(asar, 'installLocalePatch');
+    fs.writeFileSync(archive, 'installLocalePatch');
     fs.writeFileSync(clean, 'installLocalePatch');
-    fs.writeFileSync(pristine, 'official archive');
-    ensureCleanBackupForPatch(dir, asar, clean, true);
-    assert.strictEqual(fs.readFileSync(clean, 'utf8'), 'official archive');
-
-    fs.writeFileSync(clean, 'installLocalePatch');
-    ensureRestorableCleanBackup(dir, clean);
-    assert.strictEqual(fs.readFileSync(clean, 'utf8'), 'official archive');
+    fs.writeFileSync(pristine, 'not a valid archive');
+    const expected = { name: 'antigravity', version: '2.0.0' };
+    assert.throws(() => ensureCleanBackupForPatch(dir, archive, clean, true, expected), /no verified pristine/);
+    assert.throws(() => ensureRestorableCleanBackup(dir, clean, expected), /No verified pristine/);
+    assert.strictEqual(fs.readFileSync(clean, 'utf8'), 'installLocalePatch');
 }));
 
 check('restore refuses an unrelated archive before refreshing the clean backup', () => withTempDir((dir) => {

@@ -146,6 +146,11 @@
       "description": "Native application menu labels. Applied in the main process, not the renderer, so these are kept out of the preload fragment.",
       "additionalProperties": { "type": "string" }
     },
+    "dialogs": {
+      "type": "object",
+      "description": "Exact source labels in the native quit confirmation dialog. Used only in the main process; button order and behavior are preserved.",
+      "additionalProperties": { "type": "string", "minLength": 1 }
+    },
     "text": {
       "type": "object",
       "description": "Static dictionary: exact English UI string to its translation. Keys must not have surrounding whitespace and values must be non-empty.",

@@ -237,6 +237,13 @@
     "Paste": "粘贴",
     "Select All": "全选"
   },
+  "dialogs": {
+    "Confirm Quit": "确认退出",
+    "Are you sure you want to quit?": "确定要退出吗？",
+    "There may be agents or background tasks running.": "可能仍有智能体或后台任务正在运行。",
+    "Cancel": "取消",
+    "Quit": "退出"
+  },
   "text": {
     "Run": "运行",
     "Agent": "代理",

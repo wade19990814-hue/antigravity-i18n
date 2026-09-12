@@ -1,12 +1,14 @@
 const fs = require('fs');
 const path = require('path');
 const os = require('os');
+const { createHash } = require('crypto');
 const { execFileSync } = require('child_process');
 // Accessed through the module object rather than destructured so the e2e tests
 // can stub the process probes when patching a fixture install.
 const detector = require('./detector');
 const {
     DEFAULT_LOCALE,
+    buildDialogFragment,
     buildMenuFragment,
     buildPreloadFragment,
     listLocales,
@@ -19,6 +21,7 @@ const {
 // zhCNText are legacy markers from versions that predated locale files, kept so
 // an install patched by an older release is still recognised.
 const PATCH_MARKERS = [
+    'installLocaleDialogs',
     'installLocalePatch',
     'installZhCNPatch',
     'const zhCNText = new Map([',
@@ -256,7 +259,7 @@ function noteBackupAccumulation(resourcesDir) {
  * same-volume rename swaps it into place. If preparation fails, the original
  * file is untouched; if the rename fails, the staged file is cleaned up.
  */
-function atomicReplaceFile(sourcePath, destinationPath) {
+function atomicReplaceFile(sourcePath, destinationPath, beforeReplace = () => {}) {
     const destinationDir = path.dirname(destinationPath);
     const stageDir = fs.mkdtempSync(path.join(destinationDir, STAGE_DIR_PREFIX));
     const stagedPath = path.join(stageDir, path.basename(destinationPath));
@@ -267,6 +270,7 @@ function atomicReplaceFile(sourcePath, destinationPath) {
         fs.fsyncSync(fd);
         fs.closeSync(fd);
         fd = null;
+        beforeReplace(stagedPath);
         fs.renameSync(stagedPath, destinationPath);
         // @electron/asar memoises archive headers by path. Leaving the entry in
         // place makes a later read of this path return the previous archive's
@@ -308,7 +312,12 @@ function ensureStoppedForModification(options = {}) {
  * @throws {Error} When the app is still running and cannot be stopped.
  */
 function closeAntigravityOrThrow(options = {}) {
-    console.log('Requesting Antigravity to close (waiting for it to save state)...');
+    if (options.force) {
+        console.log('Force-closing Antigravity now (--force); unsaved work may be lost.');
+    } else {
+        console.log(`Requesting Antigravity to close; waiting up to ${detector.GRACEFUL_TIMEOUT_MS / 1000} seconds to save state.`);
+        console.log('If it is still running after that, it will be force-closed; save unfinished work first.');
+    }
     const result = detector.stopAntigravityProcesses({ force: options.force === true });
 
     if (!result.wasRunning) {
@@ -322,7 +331,9 @@ function closeAntigravityOrThrow(options = {}) {
         );
     }
     if (result.forced) {
-        console.log('  ! Antigravity did not exit in time and was force-closed; unsaved state may be lost.');
+        console.log(options.force
+            ? '  Antigravity was force-closed as requested.'
+            : '  ! Antigravity did not exit in time and was force-closed; unsaved state may be lost.');
     } else {
         console.log('  Antigravity closed cleanly.');
     }
@@ -380,6 +391,7 @@ function detectPatchInArchive(asarPath) {
 
 function readArchiveIdentity(asarPath) {
     try {
+        invalidateArchiveCache(asarPath);
         const asar = require('@electron/asar');
         const pkg = JSON.parse(asar.extractFile(asarPath, 'package.json').toString('utf8'));
         if (typeof pkg.name !== 'string' || typeof pkg.version !== 'string') {
@@ -393,6 +405,72 @@ function readArchiveIdentity(asarPath) {
 
 function sameArchiveRelease(left, right) {
     return !left || Boolean(right && left.name === right.name && left.version === right.version);
+}
+
+function hashArchive(archivePath) {
+    const fd = fs.openSync(archivePath, 'r');
+    try {
+        const hash = createHash('sha256');
+        const buffer = Buffer.alloc(1024 * 1024);
+        let size;
+        while ((size = fs.readSync(fd, buffer, 0, buffer.length, null)) > 0) {
+            hash.update(buffer.subarray(0, size));
+        }
+        return hash.digest('hex');
+    } finally {
+        fs.closeSync(fd);
+    }
+}
+
+function assertArchiveUnchanged(archivePath, expectedHash) {
+    let currentHash;
+    try { currentHash = hashArchive(archivePath); } catch { /* Treat replacement/deletion as a change. */ }
+    if (currentHash !== expectedHash) {
+        invalidateArchiveCache(archivePath);
+        throw new Error('Antigravity archive changed during this operation, possibly because of an automatic update. Wait for the update to finish and re-run.');
+    }
+}
+
+function verifyBeforeReplacement(asarPath, expectedHash, stagedPath, sourceHash) {
+    if (detector.isAntigravityRunning()) {
+        throw new Error('Antigravity restarted during this operation. Close it and re-run.');
+    }
+    assertArchiveUnchanged(stagedPath, sourceHash);
+    assertArchiveUnchanged(asarPath, expectedHash);
+}
+
+function inspectCleanBackup(cleanBackupPath, expectedIdentity) {
+    if (!fs.existsSync(cleanBackupPath)) return 'missing';
+    const identity = readArchiveIdentity(cleanBackupPath);
+    if (!identity || identity.name !== 'antigravity') return 'invalid';
+    if (!expectedIdentity || !sameArchiveRelease(expectedIdentity, identity)) return 'version-mismatch';
+    const patched = detectPatchInArchive(cleanBackupPath);
+    if (patched === null) return 'invalid';
+    if (patched) return 'patched';
+    try {
+        const asar = require('@electron/asar');
+        // Backups share app.asar.unpacked with the installation. Check packed
+        // entries here; sidecar entries are not stored in the backup itself.
+        const payloadSize = fs.statSync(cleanBackupPath).size - 8 - asar.getRawHeader(cleanBackupPath).headerSize;
+        for (const file of asar.listPackage(cleanBackupPath)) {
+            const relative = file.replace(/^[\\/]/, '');
+            const entry = asar.statFile(cleanBackupPath, relative, false);
+            if (entry.files || entry.link || entry.unpacked) continue;
+            const offset = Number(entry.offset);
+            if (!Number.isSafeInteger(offset) || offset < 0
+                || !Number.isSafeInteger(entry.size) || entry.size < 0
+                || offset + entry.size > payloadSize) return 'invalid';
+            const bytes = asar.extractFile(cleanBackupPath, relative);
+            if (bytes.length !== entry.size) return 'invalid';
+            if (entry.integrity) {
+                if (entry.integrity.algorithm !== 'SHA256'
+                    || createHash('sha256').update(bytes).digest('hex') !== entry.integrity.hash) return 'invalid';
+            }
+        }
+    } catch {
+        return 'invalid';
+    }
+    return 'valid';
 }
 
 // The engine declares its own locale, so the installed archive can name the
@@ -446,7 +524,8 @@ function normalizeLanguage(language) {
 
 function getStatus(options = {}) {
     const { appDir, asarPath, cleanBackupPath, statePath } = detector.resolveAppPaths(options.appDir);
-    const hasCleanBackup = fs.existsSync(cleanBackupPath);
+    const cleanBackupStatus = inspectCleanBackup(cleanBackupPath, readArchiveIdentity(asarPath));
+    const hasCleanBackup = cleanBackupStatus === 'valid';
 
     const detected = detectPatchInArchive(asarPath);
     const state = detector.readState(statePath);
@@ -478,6 +557,7 @@ function getStatus(options = {}) {
         currentLanguage,
         localeName,
         hasCleanBackup,
+        cleanBackupStatus,
         statePath,
         lastPatchedAt: state ? state.patchedAt || null : null,
         stateIsStale
@@ -519,8 +599,7 @@ function findPristineArchive(resourcesDir, expectedIdentity) {
 
     for (const name of names) {
         const candidate = path.join(resourcesDir, name);
-        if (detectPatchInArchive(candidate) === false
-            && sameArchiveRelease(expectedIdentity, readArchiveIdentity(candidate))) {
+        if (inspectCleanBackup(candidate, expectedIdentity) === 'valid') {
             return candidate;
         }
     }
@@ -538,9 +617,7 @@ function ensureCleanBackupForPatch(resourcesDir, asarPath, cleanBackupPath, curr
         return;
     }
 
-    if (fs.existsSync(cleanBackupPath)
-        && detectPatchInArchive(cleanBackupPath) === false
-        && sameArchiveRelease(expectedIdentity, readArchiveIdentity(cleanBackupPath))) {
+    if (inspectCleanBackup(cleanBackupPath, expectedIdentity) === 'valid') {
         return;
     }
 
@@ -557,9 +634,7 @@ function ensureCleanBackupForPatch(resourcesDir, asarPath, cleanBackupPath, curr
 }
 
 function ensureRestorableCleanBackup(resourcesDir, cleanBackupPath, expectedIdentity) {
-    if (fs.existsSync(cleanBackupPath)
-        && detectPatchInArchive(cleanBackupPath) === false
-        && sameArchiveRelease(expectedIdentity, readArchiveIdentity(cleanBackupPath))) {
+    if (inspectCleanBackup(cleanBackupPath, expectedIdentity) === 'valid') {
         return;
     }
     const pristine = findPristineArchive(resourcesDir, expectedIdentity);
@@ -587,7 +662,9 @@ async function applyLocale(options = {}) {
     const locale = loadLocale(localeCode);
     const preloadFragment = buildPreloadFragment(locale);
     const menuFragment = buildMenuFragment(locale);
+    const dialogFragment = buildDialogFragment(locale);
 
+    const initialHash = hashArchive(asarPath);
     const initialPatchState = detectPatchInArchive(asarPath);
     if (initialPatchState === null) {
         throw new Error(`Could not read Antigravity archive: ${asarPath}`);
@@ -597,6 +674,7 @@ async function applyLocale(options = {}) {
         throw new Error(`Could not verify Antigravity archive identity: ${asarPath}`);
     }
     ensureStoppedForModification(options);
+    assertArchiveUnchanged(asarPath, initialHash);
 
     const currentPatchState = detectPatchInArchive(asarPath);
     if (currentPatchState === null) {
@@ -629,7 +707,6 @@ async function applyLocale(options = {}) {
         console.log('Injecting language switch into main.js...');
         let main = readUtf8(mainPath);
         main = applyLanguageSwitch(main, locale);
-        writeUtf8(mainPath, main);
         if (!main.includes("appendSwitch('lang'")) {
             throw new Error(
                 'Could not apply the language switch to main.js: the expected code pattern was not found. '
@@ -637,6 +714,8 @@ async function applyLocale(options = {}) {
                 + 'report this so the anchor can be updated.'
             );
         }
+        main = injectFragment(main, dialogFragment, {}, "if (!electron_1.app.commandLine.hasSwitch('lang')) {");
+        writeUtf8(mainPath, main);
 
         // 2. Patch menu.js (inject menu translations)
         console.log('Injecting menu translations into menu.js...');
@@ -690,7 +769,10 @@ async function applyLocale(options = {}) {
             throw new Error('Packed app.asar verification failed: application identity changed.');
         }
 
-        atomicReplaceFile(packedPath, asarPath);
+        const packedHash = hashArchive(packedPath);
+        atomicReplaceFile(packedPath, asarPath, (stagedPath) => {
+            verifyBeforeReplacement(asarPath, initialHash, stagedPath, packedHash);
+        });
         detector.writeState(statePath, locale.language, asarPath);
         console.log(`✓ Successfully switched to ${locale.name} (${locale.language})! (app.asar updated)`);
         console.log(`  Backup saved at: ${backupPath}`);
@@ -714,6 +796,7 @@ async function applyLocale(options = {}) {
 function restoreOfficial(options = {}) {
     const { appDir, resourcesDir, asarPath, cleanBackupPath, statePath } = detector.resolveAppPaths(options.appDir);
 
+    const initialHash = hashArchive(asarPath);
     const currentPatchState = detectPatchInArchive(asarPath);
     if (currentPatchState === null) {
         throw new Error(`Could not read Antigravity archive: ${asarPath}`);
@@ -730,13 +813,18 @@ function restoreOfficial(options = {}) {
         // backup may still belong to the previous release. Refresh the backup
         // and avoid needlessly stopping or rewriting the running application.
         console.log('Antigravity is already using the official English archive.');
-        atomicReplaceFile(asarPath, cleanBackupPath);
+        atomicReplaceFile(asarPath, cleanBackupPath, (stagedPath) => {
+            assertArchiveUnchanged(stagedPath, initialHash);
+            assertArchiveUnchanged(asarPath, initialHash);
+        });
         detector.writeState(statePath, 'en', asarPath);
         return;
     }
 
     ensureRestorableCleanBackup(resourcesDir, cleanBackupPath, expectedIdentity);
+    const backupHash = hashArchive(cleanBackupPath);
     ensureStoppedForModification(options);
+    assertArchiveUnchanged(asarPath, initialHash);
 
     // Create a safety backup of current state
     const stamp = getFormatTimestamp();
@@ -745,7 +833,9 @@ function restoreOfficial(options = {}) {
     noteBackupAccumulation(resourcesDir);
 
     console.log('Restoring original clean app.asar...');
-    atomicReplaceFile(cleanBackupPath, asarPath);
+    atomicReplaceFile(cleanBackupPath, asarPath, (stagedPath) => {
+        verifyBeforeReplacement(asarPath, initialHash, stagedPath, backupHash);
+    });
     detector.writeState(statePath, 'en', asarPath);
     console.log('✓ Successfully switched back to official English version!');
 

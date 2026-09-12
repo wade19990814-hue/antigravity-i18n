@@ -61,7 +61,7 @@ async function step(name, fn) {
     }
 }
 
-async function buildFixture(appDir) {
+async function buildFixture(appDir, identity = APP_IDENTITY) {
     const resourcesDir = path.join(appDir, 'resources');
     fs.mkdirSync(resourcesDir, { recursive: true });
 
@@ -70,7 +70,7 @@ async function buildFixture(appDir) {
     // A module matching the real app's unpackDir so the packing options are
     // exercised the same way.
     fs.mkdirSync(path.join(staging, 'node_modules', 'chrome-devtools-mcp'), { recursive: true });
-    fs.writeFileSync(path.join(staging, 'package.json'), JSON.stringify(APP_IDENTITY));
+    fs.writeFileSync(path.join(staging, 'package.json'), JSON.stringify(identity));
     fs.writeFileSync(path.join(staging, 'dist', 'main.js'), MAIN_JS);
     fs.writeFileSync(path.join(staging, 'dist', 'menu.js'), MENU_JS);
     fs.writeFileSync(path.join(staging, 'dist', 'preload.js'), PRELOAD_JS);
@@ -99,10 +99,14 @@ async function main() {
     // The fixture is not a running app; stubbing the probe keeps the test
     // independent of whatever is running on the machine.
     const originalProbe = detector.isAntigravityRunning;
+    const originalStop = detector.stopAntigravityProcesses;
+    const originalPack = asar.createPackageWithOptions;
     detector.isAntigravityRunning = () => false;
 
     try {
         await buildFixture(appDir);
+        const archivePath = path.join(resourcesDir, 'app.asar');
+        const pristineBytes = fs.readFileSync(archivePath);
 
         await step('apply installs the pack and reports it', async () => {
             await applyLocale({ appDir, locale: 'ja', restart: false, noKill: true });
@@ -114,6 +118,8 @@ async function main() {
             assert.strictEqual(readArchiveIdentity(status.asarPath).version, APP_IDENTITY.version);
 
             assert.match(readPacked(appDir, 'dist/main.js'), /appendSwitch\('lang', 'ja'\)/);
+            assert.match(readPacked(appDir, 'dist/main.js'), /installLocaleDialogs/);
+            assert.strictEqual(countBlocks(readPacked(appDir, 'dist/main.js')), 1);
             assert.strictEqual(countBlocks(readPacked(appDir, 'dist/preload.js')), 1);
             assert.strictEqual(countBlocks(readPacked(appDir, 'dist/menu.js')), 1);
             assert.match(readPacked(appDir, 'dist/menu.js'), /translateMenu\(menu\);/);
@@ -125,6 +131,7 @@ async function main() {
 
         await step('re-applying the same locale keeps exactly one block', async () => {
             await applyLocale({ appDir, locale: 'ja', restart: false, noKill: true });
+            assert.strictEqual(countBlocks(readPacked(appDir, 'dist/main.js')), 1);
             assert.strictEqual(countBlocks(readPacked(appDir, 'dist/preload.js')), 1);
             assert.strictEqual(countBlocks(readPacked(appDir, 'dist/menu.js')), 1);
             assert.strictEqual(
@@ -141,6 +148,8 @@ async function main() {
             const main = readPacked(appDir, 'dist/main.js');
             assert.match(main, /appendSwitch\('lang', 'ru'\)/);
             assert.ok(!main.includes("'ja'"), 'stale language switch survived');
+            assert.match(main, /Подтверждение выхода/);
+            assert.ok(!main.includes('終了の確認'), 'stale native dialog language survived');
             assert.strictEqual(countBlocks(readPacked(appDir, 'dist/preload.js')), 1);
         });
 
@@ -149,6 +158,7 @@ async function main() {
             const status = getStatus({ appDir });
             assert.strictEqual(status.currentLanguage, 'en');
             assert.strictEqual(status.hasCleanBackup, true);
+            assert.deepStrictEqual(fs.readFileSync(archivePath), pristineBytes, 'full archive differs from the original');
             assert.strictEqual(readPacked(appDir, 'dist/preload.js'), PRELOAD_JS, 'restored preload differs');
             assert.strictEqual(readPacked(appDir, 'dist/main.js'), MAIN_JS, 'restored main differs');
             assert.strictEqual(readPacked(appDir, 'dist/menu.js'), MENU_JS, 'restored menu differs');
@@ -164,8 +174,95 @@ async function main() {
             assert.strictEqual(status.currentLanguage, 'zh-CN');
             assert.strictEqual(countBlocks(readPacked(appDir, 'dist/preload.js')), 1);
         });
+
+        const clean = path.join(resourcesDir, 'app.asar.clean-backup');
+        await step('status rejects corrupt, truncated, patched and wrong-version backups', async () => {
+            const valid = fs.readFileSync(clean);
+            const before = fs.readFileSync(archivePath);
+            const setBackup = (bytes) => { fs.writeFileSync(clean, bytes); asar.uncache(clean); };
+            try {
+                setBackup(Buffer.from('broken backup'));
+                assert.strictEqual(getStatus({ appDir }).cleanBackupStatus, 'invalid');
+                assert.strictEqual(getStatus({ appDir }).hasCleanBackup, false);
+                setBackup(valid.subarray(0, valid.length - 1));
+                assert.strictEqual(getStatus({ appDir }).cleanBackupStatus, 'invalid');
+                const tampered = Buffer.from(valid);
+                // Alter a packed file in the valid archive, keeping its manifest readable.
+                setBackup(valid);
+                const entry = asar.statFile(clean, 'dist/main.js');
+                tampered[8 + asar.getRawHeader(clean).headerSize + Number(entry.offset)] ^= 1;
+                setBackup(tampered);
+                assert.strictEqual(getStatus({ appDir }).cleanBackupStatus, 'invalid');
+                // Restore must recover from a valid snapshot instead of copying corruption.
+                restoreOfficial({ appDir, restart: false, noKill: true });
+                assert.deepStrictEqual(fs.readFileSync(archivePath), pristineBytes);
+                fs.writeFileSync(archivePath, before);
+                asar.uncache(archivePath);
+                setBackup(before);
+                assert.strictEqual(getStatus({ appDir }).cleanBackupStatus, 'patched');
+                const differentApp = path.join(appDir, 'different-version');
+                await buildFixture(differentApp, { name: 'antigravity', version: '9.9.8' });
+                setBackup(fs.readFileSync(path.join(differentApp, 'resources/app.asar')));
+                assert.strictEqual(getStatus({ appDir }).cleanBackupStatus, 'version-mismatch');
+                fs.unlinkSync(clean);
+                assert.strictEqual(getStatus({ appDir }).cleanBackupStatus, 'missing');
+                assert.deepStrictEqual(fs.readFileSync(archivePath), before, 'status modified the live archive');
+            } finally { setBackup(valid); }
+        });
+
+        await step('process discovery failure leaves the archive and backup untouched', async () => {
+            const before = fs.readFileSync(archivePath);
+            const cleanBefore = fs.readFileSync(clean);
+            detector.isAntigravityRunning = () => { throw new Error('Could not query Antigravity processes'); };
+            try {
+                await assert.rejects(applyLocale({ appDir, locale: 'ja', noKill: true, restart: false }), /Could not query/);
+                assert.throws(() => restoreOfficial({ appDir, noKill: true, restart: false }), /Could not query/);
+                assert.deepStrictEqual(fs.readFileSync(archivePath), before);
+                assert.deepStrictEqual(fs.readFileSync(clean), cleanBefore);
+            } finally { detector.isAntigravityRunning = () => false; }
+        });
+
+        const newApp = path.join(appDir, 'update');
+        await buildFixture(newApp, { name: 'antigravity', version: '9.9.10' });
+        const updateBytes = fs.readFileSync(path.join(newApp, 'resources/app.asar'));
+        const replaceDuringUpdate = () => {
+            // Deliberately leave the asar library's cached header stale, just as an external updater would.
+            fs.writeFileSync(archivePath, updateBytes);
+        };
+        await step('restore aborts when the app updates while closing', async () => {
+            const cleanBefore = fs.readFileSync(clean);
+            detector.stopAntigravityProcesses = () => {
+                replaceDuringUpdate();
+                return { wasRunning: true, stopped: true, forced: false };
+            };
+            assert.throws(() => restoreOfficial({ appDir, restart: false }), /archive changed/);
+            assert.deepStrictEqual(fs.readFileSync(archivePath), updateBytes);
+            assert.deepStrictEqual(fs.readFileSync(clean), cleanBefore);
+        });
+        await step('apply aborts before refreshing a backup if shutdown installed an update', async () => {
+            await buildFixture(appDir);
+            asar.uncache(archivePath);
+            const cleanBefore = fs.readFileSync(clean);
+            await assert.rejects(applyLocale({ appDir, locale: 'ja', restart: false }), /archive changed/);
+            assert.deepStrictEqual(fs.readFileSync(archivePath), updateBytes);
+            assert.deepStrictEqual(fs.readFileSync(clean), cleanBefore);
+        });
+        await step('an update during repacking is preserved before final replacement', async () => {
+            await buildFixture(appDir);
+            asar.uncache(archivePath);
+            asar.createPackageWithOptions = async (...args) => {
+                await originalPack(...args);
+                replaceDuringUpdate();
+            };
+            try {
+                await assert.rejects(applyLocale({ appDir, locale: 'ja', noKill: true, restart: false }), /archive changed/);
+                assert.deepStrictEqual(fs.readFileSync(archivePath), updateBytes);
+            } finally { asar.createPackageWithOptions = originalPack; }
+        });
     } finally {
         detector.isAntigravityRunning = originalProbe;
+        detector.stopAntigravityProcesses = originalStop;
+        asar.createPackageWithOptions = originalPack;
         fs.rmSync(appDir, { recursive: true, force: true });
     }
 

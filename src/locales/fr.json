@@ -20,6 +20,13 @@
     "Plugins",
     "Top P"
   ],
+  "dialogs": {
+    "Confirm Quit": "Confirmer la fermeture",
+    "Are you sure you want to quit?": "Voulez-vous vraiment quitter l’application ?",
+    "There may be agents or background tasks running.": "Des agents ou des tâches en arrière-plan sont peut-être encore en cours d’exécution.",
+    "Cancel": "Annuler",
+    "Quit": "Quitter"
+  },
   "text": {
     "Run": "Exécuter",
     "Agent": "Agent",

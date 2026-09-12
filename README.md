@@ -1,6 +1,6 @@
 # antigravity-i18n
 
-English | [简体中文](./README.zh-CN.md) | [日本語](./README.ja.md) | [한국어](./README.ko.md) | [Español](./README.es.md) | [Deutsch](./README.de.md) | [Français](./README.fr.md) | [Português do Brasil](./README.pt-BR.md) | [Русский](./README.ru.md)
+English | [简体中文](./README.zh-CN.md) | [繁體中文](./README.zh-Hant.md) | [日本語](./README.ja.md) | [한국어](./README.ko.md) | [Español](./README.es.md) | [Deutsch](./README.de.md) | [Français](./README.fr.md) | [Português do Brasil](./README.pt-BR.md) | [Русский](./README.ru.md)
 
 Install a UI language pack into the [Google Antigravity](https://antigravity.google/) desktop app with one command, and restore the official build byte for byte at any time.
 
@@ -14,7 +14,7 @@ Install a UI language pack into the [Google Antigravity](https://antigravity.goo
 
 - **Zero-install**: Run directly with a single `npx` command. Finds the installation path and restarts the app for you.
 - **Any language**: Language data lives entirely in JSON packs under `src/locales/`. The translation engine holds no language of its own, so adding a language means adding a file. Simplified Chinese, Traditional Chinese, Japanese, Korean, Spanish, German, French, Brazilian Portuguese, and Russian ship in the box.
-- **Non-invasive**: Translates only the shell UI and native menus. Code editors (Monaco), terminals (xterm), and conversation areas are left alone.
+- **Non-invasive**: Translates only the shell UI and native menus and the native quit confirmation dialog. Code editors (Monaco), terminals (xterm), and conversation areas are left alone.
 - **Byte-exact restore**: Backs up the original `app.asar` on first run. `restore` puts the official archive back unchanged.
 - **Offline & private**: No network requests, no telemetry, and no access to tokens, sessions, or credentials.
 - **Plural and direction aware**: Counted strings select CLDR plural forms via `Intl.PluralRules`, and right-to-left languages must declare their writing direction.
@@ -83,9 +83,9 @@ Options:
 
 ## Notes
 
-1. **Save your work**: The tool waits up to 20 seconds for the app to exit cleanly. Save unfinished work before running.
-2. **Official updates**: An Antigravity update overwrites `app.asar`. Run `apply` again afterwards.
-3. **Backup files**: The first run creates `app.asar.clean-backup` under `resources`, and a later official update refreshes it from the current unpatched archive. Do not delete it by hand. Every apply/restore also leaves a timestamped `app.asar.bak-*` snapshot beside it, and these accumulate over time. `app.asar.clean-backup` alone is enough to restore, so once the current install proves itself you can delete older snapshots to free space.
+1. **Save your work**: The tool waits up to 30 seconds for the app to exit cleanly. Save unfinished work before running. If the app is still running after 30 seconds, it is force-closed; `--force` skips the wait.
+2. **Official updates**: An Antigravity update overwrites `app.asar`. Run `apply` again afterwards. If the archive changes during apply/restore, the operation stops. Wait for the update to finish and re-run.
+3. **Backup files**: The first run creates `app.asar.clean-backup` under `resources`, and a later official update refreshes it from the current unpatched archive. Do not delete it by hand. Every apply/restore also leaves a timestamped `app.asar.bak-*` snapshot beside it, and these accumulate over time. `app.asar.clean-backup` alone is enough to restore, so once the current install proves itself you can delete older snapshots to free space. `status` checks archive structure, available integrity hashes, patch markers and version; invalid or mismatched backups are not shown as ready to restore.
 4. **Switching languages**: Applying a different pack replaces the previous one directly; there is no need to `restore` in between.
 
 ---

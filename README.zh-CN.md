@@ -1,6 +1,6 @@
 # antigravity-i18n
 
-[English](./README.md) | 简体中文 | [日本語](./README.ja.md) | [한국어](./README.ko.md) | [Español](./README.es.md) | [Deutsch](./README.de.md) | [Français](./README.fr.md) | [Português do Brasil](./README.pt-BR.md) | [Русский](./README.ru.md)
+[English](./README.md) | 简体中文 | [繁體中文](./README.zh-Hant.md) | [日本語](./README.ja.md) | [한국어](./README.ko.md) | [Español](./README.es.md) | [Deutsch](./README.de.md) | [Français](./README.fr.md) | [Português do Brasil](./README.pt-BR.md) | [Русский](./README.ru.md)
 
 一行命令为 [Google Antigravity](https://antigravity.google/) 桌面端安装界面语言包，并支持随时按字节还原官方版本。
 
@@ -14,7 +14,7 @@
 
 - **免安装**：一条 `npx` 命令直接运行，自动识别安装路径并重启应用。
 - **多语言**：语言数据全部位于 `src/locales/` 下的 JSON 语言包中，翻译引擎本身不含任何语言内容，新增语言即新增一个文件。简体中文、繁體中文、日本語、한국어、Español、Deutsch、Français、Português do Brasil、Русский 已内置。
-- **非侵入**：仅翻译外壳界面与原生菜单，代码编辑器（Monaco）、终端（xterm）与对话区域完全不动。
+- **非侵入**：仅翻译外壳界面、原生菜单与原生退出确认框，代码编辑器（Monaco）、终端（xterm）与对话区域完全不动。
 - **字节级还原**：首次运行会备份原始 `app.asar`，`restore` 可将官方归档原样放回。
 - **离线且私有**：无网络请求、无遥测，不接触 token、会话或任何凭据。
 - **复数与书写方向**：带计数的字符串通过 `Intl.PluralRules` 选择 CLDR 复数形式；从右向左书写的语言必须声明书写方向。
@@ -83,9 +83,9 @@ Options:
 
 ## 注意事项
 
-1. **先保存工作**：工具最多等待 20 秒让应用自行退出并保存状态，运行前请先保存未完成的内容。
-2. **官方版本更新**：Antigravity 自动更新后会覆盖 `app.asar`，更新完成后重新执行一次 `apply` 即可。
-3. **备份文件**：首次运行会在 `resources` 目录生成 `app.asar.clean-backup`；官方更新后它会依据当前未打补丁的归档自动刷新，请勿手动删除。每次 apply/restore 还会在旁边留下一份带时间戳的 `app.asar.bak-*` 快照，并随运行次数不断累积；还原只依赖 `app.asar.clean-backup`，确认当前安装稳定后可删除旧快照释放空间。
+1. **先保存工作**：工具最多等待 30 秒让应用自行退出并保存状态，运行前请先保存未完成的内容。 超时仍在运行时会强制关闭；`--force` 会跳过等待。
+2. **官方版本更新**：Antigravity 自动更新后会覆盖 `app.asar`，更新完成后重新执行一次 `apply` 即可。 如果安装或还原期间归档发生变化，操作会停止；请等待更新完成后重新执行。
+3. **备份文件**：首次运行会在 `resources` 目录生成 `app.asar.clean-backup`；官方更新后它会依据当前未打补丁的归档自动刷新，请勿手动删除。每次 apply/restore 还会在旁边留下一份带时间戳的 `app.asar.bak-*` 快照，并随运行次数不断累积；还原只依赖 `app.asar.clean-backup`，确认当前安装稳定后可删除旧快照释放空间。 `status` 会检查归档结构、已有完整性校验值、补丁标记及版本，不会将损坏或版本不匹配的备份显示为可还原。
 4. **切换语言**：安装另一个语言包会直接替换原有的，中间不需要先 `restore`。
 
 ---

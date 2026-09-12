@@ -1,0 +1,30 @@
+/* antigravity-i18n:begin */
+// Native quit confirmation is owned by the main process, outside the DOM.
+(function installLocaleDialogs() {
+    const labels = new Map(Object.entries(DIALOG_DATA_PLACEHOLDER));
+    const dialog = electron_1.dialog;
+    const translate = (value) => labels.has(value) ? labels.get(value) : value;
+    for (const method of ['showMessageBox', 'showMessageBoxSync']) {
+        const original = dialog[method];
+        if (typeof original !== 'function') continue;
+        dialog[method] = function (...args) {
+            // Preserve both (options) and (window, options) overloads.
+            const index = args.length > 1 && args[1] && typeof args[1] === 'object' ? 1 : 0;
+            const options = args[index];
+            // Only the app's known quit prompt is translated. Arbitrary app
+            // errors, paths and user-supplied dialog contents pass through.
+            if (options && options.title === 'Confirm Quit'
+                && options.message === 'Are you sure you want to quit?') {
+                args[index] = {
+                    ...options,
+                    title: translate(options.title),
+                    message: translate(options.message),
+                    detail: translate(options.detail),
+                    ...(Array.isArray(options.buttons) ? { buttons: options.buttons.map(translate) } : {}),
+                };
+            }
+            return Reflect.apply(original, this, args);
+        };
+    }
+})();
+/* antigravity-i18n:end */

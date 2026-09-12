@@ -270,6 +270,7 @@ function validateLocale(code, locale) {
         }
     }
     if (locale.menu !== undefined) validateStringMap(code, 'menu', locale.menu);
+    if (locale.dialogs !== undefined) validateStringMap(code, 'dialogs', locale.dialogs);
     if (locale.punctuation !== undefined) {
         validateStringMap(code, 'punctuation', locale.punctuation, { allowEmptyKey: true, allowEmptyValue: true });
     }
@@ -402,9 +403,9 @@ function validateLocale(code, locale) {
  */
 function buildPreloadFragment(locale) {
     const template = fs.readFileSync(path.join(PATCHES_DIR, 'engine.jsfrag'), 'utf8');
-    // The engine receives runtime locale data only. The menu map belongs to the
+    // The engine receives runtime locale data only. Native maps belong to the
     // main process, while allowSourceEqual is metadata used only by reports.
-    const { menu, allowSourceEqual, ...rendererLocale } = locale;
+    const { menu, dialogs, allowSourceEqual, ...rendererLocale } = locale;
     return template.replace('LOCALE_DATA_PLACEHOLDER', () => JSON.stringify(rendererLocale));
 }
 
@@ -417,6 +418,11 @@ function buildPreloadFragment(locale) {
 function buildMenuFragment(locale) {
     const template = fs.readFileSync(path.join(PATCHES_DIR, 'menu.jsfrag'), 'utf8');
     return template.replace('MENU_DATA_PLACEHOLDER', () => JSON.stringify(locale.menu || {}));
+}
+
+function buildDialogFragment(locale) {
+    const template = fs.readFileSync(path.join(PATCHES_DIR, 'dialog.jsfrag'), 'utf8');
+    return template.replace('DIALOG_DATA_PLACEHOLDER', () => JSON.stringify(locale.dialogs || {}));
 }
 
 /**
@@ -445,13 +451,14 @@ function describeLocale(code) {
  * language's file.
  *
  * @param {string} [reference=DEFAULT_LOCALE]
- * @returns {{ text: string[], menu: string[], patterns: string[] }}
+ * @returns {{ text: string[], menu: string[], dialogs: string[], patterns: string[] }}
  */
 function collectSourceStrings(reference = DEFAULT_LOCALE) {
     const locale = loadLocale(reference);
     return {
         text: Object.keys(locale.text).sort(),
         menu: Object.keys(locale.menu || {}).sort(),
+        dialogs: Object.keys(locale.dialogs || {}).sort(),
         patterns: (locale.patterns || []).map((rule) => rule.id).filter(Boolean).sort()
     };
 }
@@ -468,6 +475,7 @@ function diffLocale(code, reference = DEFAULT_LOCALE) {
     const locale = loadLocale(code);
     const textKeys = new Set(Object.keys(locale.text));
     const menuKeys = new Set(Object.keys(locale.menu || {}));
+    const dialogKeys = new Set(Object.keys(locale.dialogs || {}));
     const patternIds = new Set((locale.patterns || []).map((rule) => rule.id).filter(Boolean));
 
     // An entry whose value equals its key is normally a copied placeholder.
@@ -481,11 +489,13 @@ function diffLocale(code, reference = DEFAULT_LOCALE) {
     const missing = {
         text: source.text.filter((key) => !textKeys.has(key)),
         menu: source.menu.filter((key) => !menuKeys.has(key)),
+        dialogs: source.dialogs.filter((key) => !dialogKeys.has(key)),
         patterns: source.patterns.filter((id) => !patternIds.has(id))
     };
     const extra = {
         text: [...textKeys].filter((key) => !source.text.includes(key)).sort(),
         menu: [...menuKeys].filter((key) => !source.menu.includes(key)).sort(),
+        dialogs: [...dialogKeys].filter((key) => !source.dialogs.includes(key)).sort(),
         patterns: [...patternIds].filter((id) => !source.patterns.includes(id)).sort()
     };
     const covered = source.text.length - missing.text.length;
@@ -498,6 +508,7 @@ module.exports = {
     LOCALES_DIR,
     PLURAL_CATEGORIES,
     WRITING_DIRECTIONS,
+    buildDialogFragment,
     buildMenuFragment,
     buildPreloadFragment,
     collectSourceStrings,

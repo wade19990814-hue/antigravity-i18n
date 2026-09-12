@@ -1,6 +1,6 @@
 # antigravity-i18n
 
-[English](./README.md) | [简体中文](./README.zh-CN.md) | [日本語](./README.ja.md) | [한국어](./README.ko.md) | [Español](./README.es.md) | [Deutsch](./README.de.md) | Français | [Português do Brasil](./README.pt-BR.md) | [Русский](./README.ru.md)
+[English](./README.md) | [简体中文](./README.zh-CN.md) | [繁體中文](./README.zh-Hant.md) | [日本語](./README.ja.md) | [한국어](./README.ko.md) | [Español](./README.es.md) | [Deutsch](./README.de.md) | Français | [Português do Brasil](./README.pt-BR.md) | [Русский](./README.ru.md)
 
 Installez en une seule commande un paquet de langue pour l'interface de l'application de bureau [Google Antigravity](https://antigravity.google/), puis restaurez à tout moment la version officielle à l'octet près.
 
@@ -14,7 +14,7 @@ Installez en une seule commande un paquet de langue pour l'interface de l'applic
 
 - **Sans installation permanente** : exécution directe avec une seule commande `npx`. Le chemin d'installation est détecté et l'application est redémarrée automatiquement.
 - **Multilingue** : toutes les données linguistiques sont stockées dans des paquets JSON sous `src/locales/`. Le moteur de traduction ne contient aucune donnée propre à une langue. Le chinois simplifié, le chinois traditionnel, le japonais, le coréen, l'espagnol, l'allemand, le français, le portugais brésilien et le russe sont inclus.
-- **Non intrusif** : seuls l'interface générale et les menus natifs sont traduits. L'éditeur de code (Monaco), le terminal (xterm) et les zones de conversation restent intacts.
+- **Non intrusif** : seuls l'interface générale, les menus natifs et la boîte de dialogue native de confirmation de fermeture sont traduits. L'éditeur de code (Monaco), le terminal (xterm) et les zones de conversation restent intacts.
 - **Restauration exacte** : le fichier `app.asar` d'origine est sauvegardé lors de la première exécution. `restore` remet en place l'archive officielle sans aucune modification.
 - **Hors ligne et privé** : aucune requête réseau, aucune télémétrie et aucun accès aux jetons, sessions ou identifiants.
 - **Pluriels et direction d'écriture** : les textes comportant une quantité utilisent les formes plurielles CLDR via `Intl.PluralRules` ; les langues de droite à gauche peuvent déclarer leur direction.
@@ -84,9 +84,9 @@ Options:
 
 ## Remarques
 
-1. **Enregistrez votre travail** : l'outil attend jusqu'à 20 secondes afin que l'application puisse sauvegarder son état et se fermer normalement. Enregistrez tout travail en cours avant de l'exécuter.
-2. **Mises à jour officielles** : une mise à jour d'Antigravity remplace `app.asar`. Exécutez de nouveau `apply` après la mise à jour.
-3. **Fichiers de sauvegarde** : la première exécution crée `app.asar.clean-backup` dans le dossier `resources`. Après une mise à jour officielle, ce fichier est automatiquement renouvelé depuis l'archive actuelle non modifiée. Ne le supprimez pas manuellement. Chaque apply/restore laisse également à côté une copie horodatée `app.asar.bak-*`, et celles-ci s'accumulent au fil des exécutions. La restauration ne repose que sur `app.asar.clean-backup` ; une fois l'installation actuelle éprouvée, vous pouvez supprimer les anciennes copies pour libérer de l'espace.
+1. **Enregistrez votre travail** : l'outil attend jusqu'à 30 secondes afin que l'application puisse sauvegarder son état et se fermer normalement. Enregistrez tout travail en cours avant de l'exécuter. Si elle fonctionne encore après 30 secondes, elle est fermée de force ; `--force` ignore ce délai.
+2. **Mises à jour officielles** : une mise à jour d'Antigravity remplace `app.asar`. Exécutez de nouveau `apply` après la mise à jour. Si l'archive change pendant apply/restore, l'opération s'arrête. Attendez la fin de la mise à jour, puis relancez la commande.
+3. **Fichiers de sauvegarde** : la première exécution crée `app.asar.clean-backup` dans le dossier `resources`. Après une mise à jour officielle, ce fichier est automatiquement renouvelé depuis l'archive actuelle non modifiée. Ne le supprimez pas manuellement. Chaque apply/restore laisse également à côté une copie horodatée `app.asar.bak-*`, et celles-ci s'accumulent au fil des exécutions. La restauration ne repose que sur `app.asar.clean-backup` ; une fois l'installation actuelle éprouvée, vous pouvez supprimer les anciennes copies pour libérer de l'espace. `status` vérifie la structure de l'archive, les empreintes d'intégrité disponibles, les marqueurs du correctif et la version. Les sauvegardes endommagées ou d'une autre version ne sont pas indiquées comme prêtes à restaurer.
 4. **Changement de langue** : l'application d'un autre paquet remplace directement le paquet actif ; il n'est pas nécessaire d'exécuter `restore` au préalable.
 
 ---

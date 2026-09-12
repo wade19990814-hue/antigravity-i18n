@@ -12,7 +12,7 @@ const STATE_MARKER_NAME = 'antigravity-i18n-state.json';
 const LEGACY_STATE_MARKER_NAMES = ['polygravity-state.json', 'antigravity-zh-state.json'];
 
 // How long Antigravity is given to close on its own before it is force-killed.
-const GRACEFUL_TIMEOUT_MS = 20000;
+const GRACEFUL_TIMEOUT_MS = 30000;
 const GRACEFUL_POLL_INTERVAL_MS = 500;
 
 function getPossibleAppDirs() {
@@ -208,8 +208,8 @@ function isAntigravityRunning() {
                 shell: false
             });
             return /antigravity\.exe/i.test(out);
-        } catch {
-            return false;
+        } catch (err) {
+            throw new Error(`Could not query Antigravity processes (tasklist): ${err.code || err.message}. Cannot confirm the app is stopped.`);
         }
     }
 
@@ -220,8 +220,12 @@ function isAntigravityRunning() {
         try {
             execFileSync('pgrep', ['-x', name], { stdio: 'ignore', shell: false });
             return true;
-        } catch {
-            // Try the next casing.
+        } catch (err) {
+            // pgrep uses status 1 for a successful query with no matches.
+            // A missing command, denied access or another failure is unknown.
+            if (err.status !== 1 || err.signal || err.code) {
+                throw new Error(`Could not query Antigravity processes (pgrep): ${err.code || err.message}. Cannot confirm the app is stopped.`);
+            }
         }
     }
     return false;
@@ -350,5 +354,6 @@ module.exports = {
     readState,
     writeState,
     STATE_MARKER_NAME,
-    LEGACY_STATE_MARKER_NAMES
+    LEGACY_STATE_MARKER_NAMES,
+    GRACEFUL_TIMEOUT_MS
 };

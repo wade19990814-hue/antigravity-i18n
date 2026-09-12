@@ -37,6 +37,8 @@ Options:
   -h, --help        Show this help message
   -v, --version     Show package version
 
+The app gets 30 seconds to exit before it is force-closed. Save your work first.
+
 Examples:
   npx antigravity-i18n apply --locale zh-CN
   npx antigravity-i18n restore
@@ -138,6 +140,16 @@ function describeLanguage(language, localeName) {
     return name ? `${name} (${language})` : language;
 }
 
+function describeBackup(status) {
+    return {
+        valid: 'Verified for the current app version (Ready for 1-click restore)',
+        missing: 'Not yet created',
+        invalid: 'Invalid or unreadable; a verified backup is required',
+        patched: 'Contains a localization patch; cannot restore from this copy',
+        'version-mismatch': 'Does not match the current app version; cannot restore from this copy'
+    }[status] || 'Unknown (not verified)';
+}
+
 async function main() {
     try {
         const { command, appDir, restart, noKill, force, locale } = parseArgs(process.argv.slice(2));
@@ -161,7 +173,7 @@ async function main() {
             console.log(`App Directory:    ${status.appDir}`);
             console.log(`ASAR File:        ${status.asarPath}`);
             console.log(`Current Language: ${describeLanguage(status.currentLanguage, status.localeName)}`);
-            console.log(`Clean Backup:     ${status.hasCleanBackup ? 'Available (Ready for 1-click restore)' : 'Not yet created'}`);
+            console.log(`Clean Backup:     ${describeBackup(status.cleanBackupStatus)}`);
             if (status.lastPatchedAt) {
                 console.log(`Last Switched:    ${status.lastPatchedAt}`);
             }
@@ -194,4 +206,4 @@ if (require.main === module) {
     main();
 }
 
-module.exports = { parseArgs, describeLanguage };
+module.exports = { parseArgs, describeLanguage, describeBackup };

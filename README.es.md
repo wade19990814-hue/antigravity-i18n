@@ -1,6 +1,6 @@
 # antigravity-i18n
 
-[English](./README.md) | [简体中文](./README.zh-CN.md) | [日本語](./README.ja.md) | [한국어](./README.ko.md) | Español | [Deutsch](./README.de.md) | [Français](./README.fr.md) | [Português do Brasil](./README.pt-BR.md) | [Русский](./README.ru.md)
+[English](./README.md) | [简体中文](./README.zh-CN.md) | [繁體中文](./README.zh-Hant.md) | [日本語](./README.ja.md) | [한국어](./README.ko.md) | Español | [Deutsch](./README.de.md) | [Français](./README.fr.md) | [Português do Brasil](./README.pt-BR.md) | [Русский](./README.ru.md)
 
 Instala un paquete de idioma para la interfaz de la aplicación de escritorio [Google Antigravity](https://antigravity.google/) con un solo comando y restaura la versión oficial byte por byte cuando quieras.
 
@@ -14,7 +14,7 @@ Instala un paquete de idioma para la interfaz de la aplicación de escritorio [G
 
 - **Sin instalación permanente**: ejecútalo directamente con un único comando `npx`. Detecta la ruta de instalación y reinicia la aplicación automáticamente.
 - **Multilingüe**: los datos de cada idioma viven en paquetes JSON bajo `src/locales/`. El motor de traducción no contiene datos específicos de ningún idioma. Incluye chino simplificado, chino tradicional, japonés, coreano, español, alemán, francés, portugués de Brasil y ruso.
-- **No invasivo**: traduce únicamente la interfaz general y los menús nativos. No modifica el editor de código (Monaco), la terminal (xterm) ni las áreas de conversación.
+- **No invasivo**: traduce únicamente la interfaz general, los menús nativos y el diálogo nativo de confirmación de salida. No modifica el editor de código (Monaco), la terminal (xterm) ni las áreas de conversación.
 - **Restauración exacta**: guarda una copia del `app.asar` original durante la primera ejecución. `restore` recupera el archivo oficial byte por byte.
 - **Privado y sin conexión**: no realiza solicitudes de red, no incluye telemetría y no accede a tokens, sesiones ni credenciales.
 - **Compatible con plurales y dirección de escritura**: las cadenas con cantidades seleccionan las formas plurales CLDR mediante `Intl.PluralRules`; los idiomas de derecha a izquierda pueden declarar su dirección de escritura.
@@ -84,9 +84,9 @@ Options:
 
 ## Notas
 
-1. **Guarda tu trabajo**: la herramienta espera hasta 20 segundos para que la aplicación se cierre normalmente y guarde su estado. Guarda cualquier trabajo pendiente antes de ejecutarla.
-2. **Actualizaciones oficiales**: una actualización de Antigravity sobrescribe `app.asar`. Vuelve a ejecutar `apply` después de actualizar.
-3. **Copias de seguridad**: la primera ejecución crea `app.asar.clean-backup` en el directorio `resources`. Después de una actualización oficial se renueva automáticamente desde el archivo actual sin modificar. No la elimines manualmente. Cada apply/restore también deja a su lado una instantánea `app.asar.bak-*` con marca de tiempo, y se acumulan con cada ejecución. Para restaurar basta con `app.asar.clean-backup`, así que, cuando la instalación actual haya demostrado ser estable, puedes eliminar las instantáneas antiguas para liberar espacio.
+1. **Guarda tu trabajo**: la herramienta espera hasta 30 segundos para que la aplicación se cierre normalmente y guarde su estado. Guarda cualquier trabajo pendiente antes de ejecutarla. Si sigue abierta después de 30 segundos, se fuerza su cierre; `--force` omite la espera.
+2. **Actualizaciones oficiales**: una actualización de Antigravity sobrescribe `app.asar`. Vuelve a ejecutar `apply` después de actualizar. Si el archivo cambia durante apply/restore, la operación se detiene. Espera a que termine la actualización y vuelve a ejecutar el comando.
+3. **Copias de seguridad**: la primera ejecución crea `app.asar.clean-backup` en el directorio `resources`. Después de una actualización oficial se renueva automáticamente desde el archivo actual sin modificar. No la elimines manualmente. Cada apply/restore también deja a su lado una instantánea `app.asar.bak-*` con marca de tiempo, y se acumulan con cada ejecución. Para restaurar basta con `app.asar.clean-backup`, así que, cuando la instalación actual haya demostrado ser estable, puedes eliminar las instantáneas antiguas para liberar espacio. `status` comprueba la estructura del archivo de respaldo, las sumas de integridad disponibles, las marcas del parche y la versión. Las copias dañadas o de otra versión no se muestran como listas para restaurar.
 4. **Cambio de idioma**: al aplicar otro paquete se reemplaza directamente el anterior; no hace falta ejecutar `restore` primero.
 
 ---

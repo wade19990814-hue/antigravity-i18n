@@ -17,6 +17,13 @@
     "？",
     "！"
   ],
+  "dialogs": {
+    "Confirm Quit": "종료 확인",
+    "Are you sure you want to quit?": "정말 종료하시겠습니까?",
+    "There may be agents or background tasks running.": "에이전트나 백그라운드 작업이 실행 중일 수 있습니다.",
+    "Cancel": "취소",
+    "Quit": "종료"
+  },
   "text": {
     "Run": "실행",
     "Agent": "에이전트",

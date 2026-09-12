@@ -17,6 +17,13 @@
     "？",
     "！"
   ],
+  "dialogs": {
+    "Confirm Quit": "終了の確認",
+    "Are you sure you want to quit?": "終了してもよろしいですか？",
+    "There may be agents or background tasks running.": "エージェントやバックグラウンドタスクが実行中の可能性があります。",
+    "Cancel": "キャンセル",
+    "Quit": "終了"
+  },
   "text": {
     "Run": "実行",
     "Agent": "エージェント",

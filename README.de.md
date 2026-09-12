@@ -1,6 +1,6 @@
 # antigravity-i18n
 
-[English](./README.md) | [简体中文](./README.zh-CN.md) | [日本語](./README.ja.md) | [한국어](./README.ko.md) | [Español](./README.es.md) | Deutsch | [Français](./README.fr.md) | [Português do Brasil](./README.pt-BR.md) | [Русский](./README.ru.md)
+[English](./README.md) | [简体中文](./README.zh-CN.md) | [繁體中文](./README.zh-Hant.md) | [日本語](./README.ja.md) | [한국어](./README.ko.md) | [Español](./README.es.md) | Deutsch | [Français](./README.fr.md) | [Português do Brasil](./README.pt-BR.md) | [Русский](./README.ru.md)
 
 Installiere mit einem einzigen Befehl ein UI-Sprachpaket in der Desktop-App [Google Antigravity](https://antigravity.google/) und stelle jederzeit die offizielle Version bytegenau wieder her.
 
@@ -14,7 +14,7 @@ Installiere mit einem einzigen Befehl ein UI-Sprachpaket in der Desktop-App [Goo
 
 - **Keine dauerhafte Installation**: Direkt mit einem einzigen `npx`-Befehl ausführen. Installationspfad und Neustart der App werden automatisch erledigt.
 - **Mehrsprachig**: Alle Sprachdaten liegen in JSON-Paketen unter `src/locales/`. Die Übersetzungs-Engine selbst enthält keine sprachspezifischen Daten. Chinesisch (vereinfacht), Chinesisch (traditionell), Japanisch, Koreanisch, Spanisch, Deutsch, Französisch, brasilianisches Portugiesisch und Russisch sind enthalten.
-- **Nicht invasiv**: Nur die App-Oberfläche und native Menüs werden übersetzt. Code-Editor (Monaco), Terminal (xterm) und Unterhaltungsbereiche bleiben unverändert.
+- **Nicht invasiv**: Nur die App-Oberfläche, native Menüs und der native Dialog zur Bestätigung des Beendens werden übersetzt. Code-Editor (Monaco), Terminal (xterm) und Unterhaltungsbereiche bleiben unverändert.
 - **Bytegenaue Wiederherstellung**: Beim ersten Lauf wird die originale `app.asar` gesichert. `restore` stellt das offizielle Archiv unverändert wieder her.
 - **Offline und privat**: Keine Netzwerkanfragen, keine Telemetrie und kein Zugriff auf Tokens, Sitzungen oder Zugangsdaten.
 - **Pluralformen und Schreibrichtung**: Mengenabhängige Texte verwenden CLDR-Pluralformen über `Intl.PluralRules`; Sprachen mit Schreibrichtung von rechts nach links können ihre Richtung deklarieren.
@@ -84,9 +84,9 @@ Options:
 
 ## Hinweise
 
-1. **Arbeit speichern**: Das Werkzeug wartet bis zu 20 Sekunden, damit die App ihren Zustand speichern und sauber beendet werden kann. Speichere vorher alle offenen Arbeiten.
-2. **Offizielle Updates**: Ein Antigravity-Update überschreibt `app.asar`. Führe danach `apply` erneut aus.
-3. **Sicherungsdateien**: Beim ersten Lauf wird `app.asar.clean-backup` im Verzeichnis `resources` erstellt. Nach einem offiziellen Update wird sie automatisch aus dem aktuellen unveränderten Archiv erneuert. Lösche sie nicht manuell. Bei jedem apply/restore wird zusätzlich ein Zeitstempel-Snapshot `app.asar.bak-*` daneben abgelegt, und diese häufen sich mit der Zeit an. Für die Wiederherstellung genügt `app.asar.clean-backup`; sobald sich die aktuelle Installation bewährt hat, kannst du ältere Snapshots löschen, um Speicherplatz freizugeben.
+1. **Arbeit speichern**: Das Werkzeug wartet bis zu 30 Sekunden, damit die App ihren Zustand speichern und sauber beendet werden kann. Speichere vorher alle offenen Arbeiten. Läuft die App nach 30 Sekunden noch, wird sie zwangsweise beendet; `--force` überspringt die Wartezeit.
+2. **Offizielle Updates**: Ein Antigravity-Update überschreibt `app.asar`. Führe danach `apply` erneut aus. Ändert sich das Archiv während apply/restore, wird der Vorgang abgebrochen. Warte auf den Abschluss des Updates und führe den Befehl erneut aus.
+3. **Sicherungsdateien**: Beim ersten Lauf wird `app.asar.clean-backup` im Verzeichnis `resources` erstellt. Nach einem offiziellen Update wird sie automatisch aus dem aktuellen unveränderten Archiv erneuert. Lösche sie nicht manuell. Bei jedem apply/restore wird zusätzlich ein Zeitstempel-Snapshot `app.asar.bak-*` daneben abgelegt, und diese häufen sich mit der Zeit an. Für die Wiederherstellung genügt `app.asar.clean-backup`; sobald sich die aktuelle Installation bewährt hat, kannst du ältere Snapshots löschen, um Speicherplatz freizugeben. `status` prüft Archivstruktur, vorhandene Integritätsprüfsummen, Patch-Markierungen und Version. Ungültige oder nicht zur Version passende Sicherungen werden nicht als wiederherstellbar angezeigt.
 4. **Sprache wechseln**: Ein anderes Sprachpaket ersetzt das aktive Paket direkt. Ein vorheriges `restore` ist nicht nötig.
 
 ---
