@@ -1,120 +1,131 @@
 # antigravity-i18n
 
-[English](./README.md) | [简体中文](./README.zh-CN.md) | [繁體中文](./README.zh-Hant.md) | [日本語](./README.ja.md) | 한국어 | [Español](./README.es.md) | [Deutsch](./README.de.md) | [Français](./README.fr.md) | [Português do Brasil](./README.pt-BR.md) | [Русский](./README.ru.md)
 
-한 줄 명령으로 [Google Antigravity](https://antigravity.google/) 데스크톱 앱에 UI 언어 팩을 적용하고, 언제든 공식 버전을 바이트 단위로 정확히 복원할 수 있습니다.
+[Google Antigravity](https://antigravity.google/) 데스크톱 클라이언트를 위한 다국어 로컬라이제이션 도구입니다.
 
-![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20Linux%20%7C%20macOS-blue?style=flat-square)
-![License](https://img.shields.io/badge/license-MIT-green?style=flat-square)
-![Node](https://img.shields.io/badge/node-%3E%3D16-brightgreen?style=flat-square)
 
----
+[简体中文](./README.zh-CN.md) | [English](./README.md) | [繁體中文](./README.zh-Hant.md) | [日本語](./README.ja.md) | **한국어** | [Deutsch](./README.de.md) | [Español](./README.es.md) | [Français](./README.fr.md) | [Português (Brasil)](./README.pt-BR.md) | [Русский](./README.ru.md)
 
-## 주요 기능
+## 프로젝트 상태 및 지원 플랫폼
 
-- **별도 설치 불필요**: 하나의 `npx` 명령으로 바로 실행하며, 설치 경로 감지와 앱 재시작도 자동으로 처리합니다.
-- **다국어 지원**: 언어 데이터는 모두 `src/locales/` 아래의 JSON 팩으로 분리되어 있습니다. 번역 엔진 자체는 특정 언어에 의존하지 않습니다. 중국어 간체, 중국어 번체, 일본어, 한국어, 스페인어, 독일어, 프랑스어, 브라질 포르투갈어, 러시아어가 기본 제공됩니다.
-- **비침습적**: 셸 UI, 네이티브 메뉴와 네이티브 종료 확인 대화상자만 번역합니다. 코드 편집기(Monaco), 터미널(xterm), 대화 영역은 변경하지 않습니다.
-- **바이트 단위 복원**: 처음 실행할 때 원본 `app.asar`를 백업하며, `restore`로 공식 아카이브를 변경 전 상태 그대로 되돌립니다.
-- **오프라인 및 개인정보 보호**: 네트워크 요청과 원격 측정이 없으며 토큰, 세션, 자격 증명에 접근하지 않습니다.
-- **복수형과 쓰기 방향 지원**: 수량이 포함된 문자열은 `Intl.PluralRules`로 CLDR 복수형을 선택하고, 오른쪽에서 왼쪽으로 쓰는 언어는 쓰기 방향을 선언할 수 있습니다.
+이 저장소는 앞으로 개발을 진행할 주 저장소입니다. 현재 `main` 브랜치는 Go/Wails v3 버전이며, 현재는 **Windows만 지원**합니다. 기존 크로스 플랫폼 Node.js/npm 구현은 [legacy-node 브랜치](https://github.com/wade19990814-hue/antigravity-i18n/tree/legacy-node)에 별도로 보존되어 있으며, 기존 v1/v2 태그와 릴리스는 그대로 유지됩니다.
 
 ---
 
-## 사용법
+현대적인 GUI, 순수 Go로 구현된 asar 엔진, 완전한 언어 팩을 단일 실행 파일에 통합했습니다. Node.js나 런타임 설치 없이 즉시 실행 가능하며, 언제든지 공식 영문 빌드로 바이트 단위 완벽 복원을 지원합니다.
 
-Node.js 16 이상이 필요합니다.
+---
 
-### 빠른 시작
+## 핵심 기능
 
-```bash
-# 한국어 적용
-npx antigravity-i18n apply --locale ko
+- **단일 파일 무설치**: 약 12 MB의 독립 실행형 프로그램으로 Node.js, npm, Python 등의 환경 설정이 전혀 필요 없습니다.
+- **GUI 및 CLI 듀얼 모드**: 기본적으로 직관적인 데스크톱 창을 실행하며, 스크립트 및 자동화를 위한 완전한 CLI 하위 명령(`apply` / `restore` / `status` / `locales`)을 내장하고 있습니다.
+- **바이트 단위 완벽 복원**: 최초 적용 전 공식 원본 백업(`app.asar.clean-backup`)을 자동 저장합니다. 복원 시 공식 원본 파일과 SHA-256 해시가 완벽히 일치합니다.
+- **비침습적 설계**: 쉘 인터페이스, 기본 메뉴 및 종료 확인 창만 번역합니다. 코드 편집기(Monaco), 터미널(xterm), AI 대화 스트림은 원본 그대로 안전하게 유지됩니다.
+- **오프라인 및 안정성**: 네트워크 통신 및 원격 측정 데이터 수집이 일절 없습니다. 스크립트 문법 사전 검증 및 트랜잭션 롤백 시스템을 탑재하여 오류 시 안전하게 복구됩니다.
 
-# 简体中文: npx antigravity-i18n apply --locale zh-CN
-# 繁體中文: npx antigravity-i18n apply --locale zh-Hant
-# 日本語: npx antigravity-i18n apply --locale ja
-# Español: npx antigravity-i18n apply --locale es
-# Deutsch: npx antigravity-i18n apply --locale de
-# Français: npx antigravity-i18n apply --locale fr
-# Português do Brasil: npx antigravity-i18n apply --locale pt-BR
-# Русский: npx antigravity-i18n apply --locale ru
+---
 
-# 공식 버전으로 복원
-npx antigravity-i18n restore
+## 다운로드 및 사용법
 
-# 현재 언어와 백업 상태 확인
-npx antigravity-i18n status
+### 다운로드
 
-# 기본 제공 언어 팩 목록 표시
-npx antigravity-i18n locales
+저장소의 [Releases](../../releases) 페이지에서 최신 `antigravity-i18n.exe`를 다운로드하여 바로 실행하세요.
+
+### 1. 그래픽 인터페이스 (권장)
+
+`antigravity-i18n.exe`를 더블 클릭하여 실행합니다:
+1. 프로그램이 Antigravity 설치 경로를 자동으로 감지합니다(미감지 시 '위치 변경'을 클릭하여 직접 지정).
+2. 언어 목록에서 원하는 언어를 선택합니다(**English** 선택 시 공식 원본으로 복원).
+3. '적용' 버튼을 클릭합니다. 안전한 프로세스 종료를 확인한 후 리소스를 갱신하고 Antigravity를 재실행합니다.
+
+### 2. 명령줄(CLI) 모드
+
+동일한 실행 파일을 터미널에서 직접 호출할 수도 있습니다:
+
+```powershell
+# Check current localization status and backups
+antigravity-i18n.exe status
+
+# Install a language pack (Simplified Chinese by default)
+antigravity-i18n.exe apply --locale zh-CN
+
+# Restore the official untranslated English version
+antigravity-i18n.exe restore
+
+# List all bundled language packs with coverage
+antigravity-i18n.exe locales
 ```
 
-`zh`는 `apply --locale zh-CN`의 단축 명령이고, `en`은 `restore`의 단축 명령입니다.
+자주 사용하는 옵션:
+- `--app-dir <path>`: Antigravity 설치 디렉터리 수동 지정(환경 변수 `ANTIGRAVITY_APP_DIR` 사용 가능).
+- `--locale <code>`: 대상 언어 코드(`zh-CN`, `zh-Hant`, `ja`, `ko`, `de`, `es`, `fr` 등).
+- `--no-restart`: 적용 완료 후 Antigravity를 자동으로 재실행하지 않음.
+- `--force`: 30초 정상 종료 대기를 건너뛰고 프로세스를 즉시 강제 종료.
+- `--yes`: 프로세스 종료 확인 메시지 자동 승인.
 
-### 소스에서 실행
+---
 
-```bash
+## 내장 언어 지원
+
+모든 언어 팩은 바이나리에 직접 내장되어 있습니다:
+
+| 코드 | 언어 | 적용 범위 | 설명 |
+| :--- | :--- | :--- | :--- |
+| `zh-CN` | Simplified Chinese (简体中文) | 100% | 쉘 UI, 기본 메뉴 및 대화 상자 완벽 지원 |
+| `zh-Hant` | Traditional Chinese (繁體中文) | 100% | 검증된 기술 용어를 포함한 100% 완전 지원 |
+| `ja` | Japanese (日本語) | 100% | 검증된 기술 용어를 포함한 100% 완전 지원 |
+| `ko` | Korean (한국어) | 100% | 검증된 기술 용어를 포함한 100% 완전 지원 |
+| `de` | German (Deutsch) | 100% | 검증된 기술 용어를 포함한 100% 완전 지원 |
+| `es` | Spanish (Español) | 100% | 검증된 기술 용어를 포함한 100% 완전 지원 |
+| `fr` | French (Français) | 100% | 검증된 기술 용어를 포함한 100% 완전 지원 |
+| `pt-BR` | Portuguese (Brasil) | 100% | 검증된 기술 용어를 포함한 100% 완전 지원 |
+| `ru` | Russian (Русский) | 100% | 검증된 기술 용어를 포함한 100% 완전 지원 |
+| `en` | English | - | 공식 원본 영문 빌드 (복원하려면 선택) |
+
+---
+
+## 동작 원리 및 자주 묻는 질문
+
+### 1. Antigravity 공식 업데이트 후 작동하지 않나요?
+공식 업데이트 시 `app.asar`가 덮어씌워집니다. 업데이트가 완료된 후 본 도구를 다시 열고 '적용'을 누르면 즉시 다시 적용됩니다(도구가 새 버전을 기준으로 깨끗한 백업을 자동 갱신합니다).
+
+### 2. 언어 전환 및 복원
+언어 간 전환 시 사전 복원 없이 바로 다른 언어를 선택하여 적용할 수 있습니다. 언제든 '공식 영문으로 복원'을 선택하면 순정 상태로 돌아갑니다.
+
+### 3. 백업 파일 관리 안내
+- `app.asar.clean-backup`: 복원에 반드시 필요한 공식 순정 백업입니다. **수동으로 삭제하지 마세요**.
+- `app.asar.bak-*`: 작업할 때마다 남는 타임스탬프 스냅샷입니다. 정상 작동을 확인한 후 디스크 공간 확보를 위해 삭제하셔도 무방합니다.
+
+---
+
+## 소스 빌드
+
+**사전 요구 사항**:
+- Go 1.26+
+- [Wails v2](https://wails.io/) CLI
+
+```powershell
+# Clone the repository
 git clone https://github.com/wade19990814-hue/antigravity-i18n.git
 cd antigravity-i18n
-npm install
-node bin/cli.js apply --locale ko
+
+# Build both GUI and CLI binaries
+.\build.ps1
+
+# Run tests (including end-to-end asar verification)
+$env:ANTIGRAVITY_ASAR = "$env:LOCALAPPDATA\Programs\antigravity\resources\app.asar.clean-backup"
+go test ./...
 ```
-
-### 옵션
-
-```text
-Commands:
-  apply             언어 팩 적용(--locale로 선택)
-  restore           번역되지 않은 공식 버전으로 복원
-  status            현재 언어와 앱 경로 표시
-  locales           기본 제공 언어 팩 목록 표시
-
-Options:
-  --app-dir <path>  Antigravity 설치 경로
-  --locale <code>   적용할 언어 팩(기본값: zh-CN)
-  --no-restart      패치 후 앱을 다시 시작하지 않음
-  --no-kill         앱이 이미 종료되어 있어야 하며 프로세스를 종료하지 않음
-  --force           정상 종료 대기 없이 즉시 앱을 종료
-  -h, --help        도움말 표시
-  -v, --version     버전 표시
-```
-
----
-
-## 주의 사항
-
-1. **작업을 저장하세요**: 앱이 상태를 저장하고 정상 종료할 수 있도록 최대 30초 동안 기다립니다. 실행하기 전에 저장하지 않은 작업을 저장하세요. 30초 후에도 실행 중이면 강제 종료합니다. `--force`는 대기 시간을 건너뜁니다.
-2. **공식 업데이트**: Antigravity 업데이트는 `app.asar`를 덮어씁니다. 업데이트 후 `apply`를 다시 실행하세요. 적용 또는 복원 중에 아카이브가 변경되면 작업을 중단합니다. 업데이트가 끝난 후 명령을 다시 실행하세요.
-3. **백업 파일**: 처음 실행할 때 `resources` 폴더에 `app.asar.clean-backup`을 만듭니다. 공식 업데이트 후에는 현재의 수정되지 않은 아카이브로 자동 갱신됩니다. 직접 삭제하지 마세요. 또한 apply/restore할 때마다 타임스탬프가 붙은 `app.asar.bak-*` 스냅샷이 옆에 남으며 실행 횟수에 따라 계속 누적됩니다. 복원은 `app.asar.clean-backup`만 있으면 충분하므로, 현재 설치가 안정적임을 확인한 후에는 오래된 스냅샷을 삭제해 공간을 확보할 수 있습니다. `status`는 아카이브 구조, 사용 가능한 무결성 해시, 패치 표시 및 버전을 확인합니다. 손상되었거나 버전이 다른 백업은 복원 준비 완료로 표시하지 않습니다.
-4. **언어 전환**: 다른 언어 팩을 적용하면 현재 팩을 바로 교체합니다. 먼저 `restore`를 실행할 필요가 없습니다.
-
----
-
-## 기여
-
-번역 수정과 새로운 언어 팩 추가를 환영합니다. 사전의 키는 번역되지 않은 영어 UI 문자열이므로, 기본 제공 팩은 새 언어를 작성할 때 원문 목록으로도 사용됩니다.
-
-```bash
-# 번역해야 할 모든 영어 문자열 출력
-node scripts/locale-report.js --keys
-
-# 적용 범위, 누락 항목, 미번역 자리표시자 확인
-node scripts/locale-report.js
-```
-
-언어 팩 형식은 [CONTRIBUTING.md](./CONTRIBUTING.md)를 참고하고, Pull Request를 보내기 전에 `npm test`를 실행하세요.
 
 ---
 
 ## 면책 조항
 
-1. 관련 법률, 계약 및 Antigravity 이용 약관에서 허용하는 범위에서만 이 프로젝트를 사용하세요. 사용자는 자신의 사용 방식이 적법하고 규정을 준수하는지 확인할 책임이 있습니다.
-2. 이 프로젝트는 독립적인 오픈 소스 도구이며 Google과 제휴하거나 Google의 보증 또는 승인을 받은 것이 아닙니다. Antigravity 및 관련 상표는 각 권리자에게 귀속됩니다.
-3. 클라이언트 수정에 따른 위험은 사용자가 부담합니다. 작성자는 예상치 못한 문제, 데이터 손실 또는 기타 결과에 대해 책임지지 않습니다.
-
----
+1. 본 프로젝트는 커뮤니티에서 유지 관리하는 비공식 도구이며 Google 또는 Antigravity 공식과 아무런 관련이 없습니다.
+2. Google Antigravity 및 관련 상표의 모든 권리는 원저작권자에게 있습니다.
+3. 본 도구는 학습 및 개인적인 용도로 제공됩니다. 관련 소프트웨어 이용 약관을 준수하여 사용하시기 바랍니다.
 
 ## 라이선스
 
-[MIT](./LICENSE)
+[MIT License](./LICENSE)

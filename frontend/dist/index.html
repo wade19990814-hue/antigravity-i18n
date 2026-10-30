@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>antigravity-i18n</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="window-container">
+    <header class="app-header">
+      <div class="brand">
+        <img class="logo-badge" src="appicon.png" alt="" />
+        <div class="title-group">
+          <h1 class="app-title">Antigravity 多语言工具</h1>
+          <span class="version-tag" id="appVersionBadge">&nbsp;</span>
+        </div>
+      </div>
+      <button class="icon-btn text-link" id="btnAbout">关于</button>
+    </header>
+
+    <section class="card app-card">
+      <div class="card-header-line">
+        <div class="app-meta">
+          <span class="app-name" id="appName">Antigravity</span>
+          <span class="app-version-badge" id="appVersion">检测中...</span>
+        </div>
+        <button class="btn-sm btn-ghost" id="btnChangePath">更改位置</button>
+      </div>
+      <div class="path-display" id="appPathDisplay" title="点击更改路径">正在检测 Antigravity 安装路径...</div>
+    </section>
+
+    <section class="card hero-card" id="statusCard">
+      <div class="status-pill" id="statusPill">
+        <span class="status-dot" id="statusDot"></span>
+        <span class="status-label" id="statusLabel">检测中...</span>
+      </div>
+      <p class="status-desc" id="statusDesc">正在读取 app.asar 的实际状态...</p>
+
+      <div class="progress-box hidden" id="progressBox">
+        <div class="progress-info">
+          <span class="progress-stage" id="progressStage">正在准备...</span>
+          <span class="spinner"></span>
+        </div>
+        <div class="progress-detail" id="progressDetail">请稍候...</div>
+      </div>
+
+      <div class="action-row" id="actionRow">
+        <button class="btn btn-primary" id="btnPrimaryAction">应用中文</button>
+        <button class="btn btn-secondary hidden" id="btnSecondaryAction">打开 Antigravity</button>
+        <button class="text-link-danger hidden" id="btnRestore">还原为英文</button>
+      </div>
+    </section>
+
+    <section class="card locale-card">
+      <div class="locale-header">
+        <span class="section-title">界面语言</span>
+        <span class="section-note" id="localeNote">正在读取语言包...</span>
+      </div>
+      <div class="chips" id="localeChips"></div>
+    </section>
+
+    <footer class="app-footer">
+      <button class="text-link" id="btnToggleLogs">查看运行日志 ▾</button>
+      <span class="footer-note">便携单文件版 · 词典与软件版本配套</span>
+    </footer>
+
+    <div class="log-drawer hidden" id="logDrawer">
+      <div class="log-drawer-header">
+        <span>操作与诊断日志</span>
+        <div class="log-actions">
+          <button class="btn-xs btn-ghost" id="btnCopyLogs">复制日志</button>
+          <button class="btn-xs btn-ghost" id="btnCloseLogs">关闭</button>
+        </div>
+      </div>
+      <pre class="log-content" id="logContent">暂无操作日志。</pre>
+    </div>
+  </div>
+
+  <div class="modal-backdrop hidden" id="aboutModal">
+    <div class="modal-box">
+      <h3>关于 antigravity-i18n</h3>
+      <p class="modal-desc">
+        为 Antigravity 桌面应用提供界面多语言本地化的单文件工具，纯 Go 实现，不依赖 Node 运行时。
+      </p>
+      <ul class="about-features">
+        <li><b>按字节还原</b>：应用前保留一份干净的 app.asar，还原后与官方版本逐字节一致。</li>
+        <li><b>只动三个文件</b>：仅替换界面外壳的 JS，其余内容从原 asar 原样拷贝。</li>
+        <li><b>完整校验与回滚</b>：重算 offset 与 integrity，任何一步失败都会自动恢复原状。</li>
+      </ul>
+      <p class="modal-note">本工具为社区维护的非官方本地化工具，与 Antigravity 官方无关。</p>
+      <div class="modal-actions">
+        <button class="btn btn-primary" id="btnCloseAbout">确定</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-backdrop hidden" id="applyConfirmModal">
+    <div class="modal-box">
+      <h3 id="applyConfirmTitle">确认切换语言？</h3>
+      <p class="modal-desc" id="applyConfirmBody">
+        Antigravity 需要先关闭。工具会请求正常退出并等待 30 秒，超时将强制结束进程。
+      </p>
+      <p class="modal-sub">未保存的编辑器内容、正在进行的会话或撤销历史可能丢失。</p>
+      <div class="modal-actions">
+        <button class="btn btn-secondary" id="btnCancelApply">取消</button>
+        <button class="btn btn-primary" id="btnConfirmApply">确认继续</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-backdrop hidden" id="msgModal">
+    <div class="modal-box">
+      <h3 id="msgTitle">提示</h3>
+      <p class="modal-desc" id="msgBody"></p>
+      <div class="modal-actions">
+        <button class="btn btn-primary" id="btnMsgOk">知道了</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>

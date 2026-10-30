@@ -1,8 +1,14 @@
-node_modules/
-*.log
-*.bak*
+# Build output
+build/bin/
+
+# Binaries
+*.exe
+*.exe~
+
+# Editor / OS
 .DS_Store
 Thumbs.db
-dist/
-tmp/
-*.tgz
+
+# Go
+*.test
+*.out

@@ -1,0 +1,374 @@
+/* antigravity-i18n:begin */
+/**
+ * Locale-neutral DOM translation engine.
+ *
+ * This file contains no language data. Everything locale specific -- the
+ * dictionary, the dynamic patterns, punctuation mapping, plural rules, writing
+ * direction and <html lang> -- is injected as LOCALE_DATA when the fragment is
+ * built, so adding a language means adding a JSON file under src/locales/
+ * rather than editing this logic.
+ *
+ * The antigravity-i18n:begin/end sentinels delimit this whole block so a re-run
+ * replaces it exactly. Locating it by a code identifier instead would leave the
+ * leading comment behind and grow the file on every run.
+ */
+const AG_LOCALE = LOCALE_DATA_PLACEHOLDER;
+const agText = new Map(Object.entries(AG_LOCALE.text || {}));
+const agPunctuation = AG_LOCALE.punctuation || {};
+const agPunctuationSkip = AG_LOCALE.punctuationSkipSuffixes || [];
+const agValueMaps = AG_LOCALE.valueMaps || {};
+
+// Replacement text is inserted literally. String.prototype.replace still
+// interprets $&, $\u0060, $', $n and $$ inside the replacement even when the
+// pattern is a plain string, so a translation containing a dollar sign would
+// otherwise splice the English source back in or silently drop characters.
+function agSpliceLiteral(value, needle, replacement) {
+    const at = value.indexOf(needle);
+    if (at < 0) {
+        return value;
+    }
+    return value.slice(0, at) + replacement + value.slice(at + needle.length);
+}
+
+// Plural category selection, used by patterns whose template varies with a
+// count. Intl.PluralRules knows the CLDR categories for the target language,
+// so a locale only supplies the forms it actually needs.
+const agPluralSelector = (() => {
+    const code = AG_LOCALE.pluralLocale || AG_LOCALE.language;
+    try {
+        const rules = new Intl.PluralRules(code);
+        return (count) => rules.select(count);
+    } catch {
+        return (count) => (count === 1 ? 'one' : 'other');
+    }
+})();
+
+/**
+ * Choose the plural form of a template for a given count.
+ *
+ * A rule may declare 'templates' as a category map ({ one, few, other, ... }).
+ * The exact CLDR category wins; '=N' exact-value keys win over categories; and
+ * 'other' is the required fallback so a missing category can never render as
+ * an empty string.
+ */
+function agSelectTemplate(rule, match) {
+    if (!rule.templates) {
+        return rule.template;
+    }
+    const raw = match[rule.pluralGroup];
+    const count = Number(String(raw === undefined || raw === null ? '' : raw).replace(/[\s,\u00A0\u202F]/g, ''));
+    if (!Number.isFinite(count)) {
+        return rule.templates.other || rule.template;
+    }
+    const exact = rule.templates['=' + count];
+    if (typeof exact === 'string') {
+        return exact;
+    }
+    const category = agPluralSelector(count);
+    if (typeof rule.templates[category] === 'string') {
+        return rule.templates[category];
+    }
+    return rule.templates.other || rule.template;
+}
+
+// Compiled once: each entry pairs a matcher with its output template so the
+// match test and the substitution can never drift apart (the previous hand
+// written version duplicated all 12 regexes across two functions).
+const agPatterns = (AG_LOCALE.patterns || []).map((rule) => ({
+    id: rule.id,
+    regex: new RegExp(rule.pattern, rule.flags || ''),
+    template: rule.template,
+    templates: rule.templates || null,
+    pluralGroup: rule.pluralGroup || 1,
+    replace: rule.replace || {},
+    trimGroups: rule.trimGroups || [],
+}));
+
+const agValueRules = Object.fromEntries(
+    Object.entries(AG_LOCALE.valueRules || {}).map(([name, rules]) => [
+        name,
+        rules.map((r) => ({ regex: new RegExp(r.pattern, r.flags || 'g'), template: r.template })),
+    ])
+);
+
+const agAttributeNames = ['aria-label', 'title', 'placeholder', 'data-tooltip', 'alt'];
+const agSkipSelector = [
+    'script',
+    'style',
+    'select',
+    'code',
+    'pre',
+    'kbd',
+    'samp',
+    '[role="textbox"]',
+    '[role="log"]',
+    '[role="terminal"]',
+    '.monaco-editor',
+    '.xterm',
+    // Antigravity 2.15 uses its own file viewer and message containers rather
+    // than Monaco or role=log for these surfaces. Their text is user content.
+    '.file-viewer-root',
+    '[data-testid="user-input-step"]',
+    '[data-testid="planner-response-text"]',
+].join(',');
+
+/**
+ * Expand {n} placeholders in a template using regex capture groups.
+ *
+ * A group listed in rule.replace is first mapped through a named value map
+ * (for example the duration unit 's' -> the localized 'seconds'), falling back
+ * to the raw captured text when the map has no entry.
+ *
+ * @param {string} template
+ * @param {RegExpMatchArray} match
+ * @param {object} rule
+ * @returns {string}
+ */
+function agFormat(template, match, rule) {
+    return String(template).replace(/\{(\d+)\}/g, (_, index) => {
+        const groupIndex = Number(index);
+        let captured = match[groupIndex];
+        if (captured === undefined || captured === null) {
+            return '';
+        }
+        if (rule.trimGroups.includes(groupIndex)) {
+            captured = String(captured).trim();
+        }
+        const mapName = rule.replace[groupIndex] || rule.replace[index];
+        if (!mapName) {
+            return captured;
+        }
+        const valueRule = agValueRules[mapName];
+        if (valueRule) {
+            let text = String(captured);
+            for (const step of valueRule) {
+                text = text.replace(step.regex, (...args) => agFormat(step.template, args, { replace: {}, trimGroups: [] }));
+            }
+            return text;
+        }
+        const map = agValueMaps[mapName];
+        if (!map) {
+            return captured;
+        }
+        const key = String(captured);
+        if (Object.prototype.hasOwnProperty.call(map, key)) {
+            return map[key];
+        }
+        const lower = key.toLowerCase();
+        if (Object.prototype.hasOwnProperty.call(map, lower)) {
+            return map[lower];
+        }
+        return captured;
+    });
+}
+
+/**
+ * Find the dynamic rule that matches a string, if any.
+ *
+ * @param {string} trimmed
+ * @returns {{ rule: object, match: RegExpMatchArray }|null}
+ */
+function agMatchPattern(trimmed) {
+    for (const rule of agPatterns) {
+        const match = trimmed.match(rule.regex);
+        if (match) {
+            return { rule, match };
+        }
+    }
+    return null;
+}
+
+function agLookup(trimmed) {
+    return agText.get(trimmed) || agText.get(trimmed.replace(/\s+/g, ' '));
+}
+
+function agSplitTrailingPunctuation(trimmed) {
+    const match = trimmed.match(/^([\s\S]*?)([\.\:\：\?\？\!\…\s]+)$/);
+    if (!match) {
+        return null;
+    }
+    return { core: match[1].trim(), punctuation: match[2] };
+}
+
+function hasTranslation(trimmed) {
+    if (agLookup(trimmed)) {
+        return true;
+    }
+    const split = agSplitTrailingPunctuation(trimmed);
+    if (split && agText.has(split.core)) {
+        return true;
+    }
+    return agMatchPattern(trimmed) !== null;
+}
+
+function translateString(value) {
+    if (typeof value !== 'string') {
+        return value;
+    }
+    const trimmed = value.trim();
+    if (!trimmed) {
+        return value;
+    }
+
+    const direct = agLookup(trimmed);
+    if (direct) {
+        return agSpliceLiteral(value, trimmed, direct);
+    }
+
+    const matched = agMatchPattern(trimmed);
+    if (matched) {
+        const template = agSelectTemplate(matched.rule, matched.match);
+        return agSpliceLiteral(value, trimmed, agFormat(template, matched.match, matched.rule));
+    }
+
+    // Dictionary hit with trailing punctuation: localize the punctuation too,
+    // unless the translation already ends with localized punctuation.
+    const split = agSplitTrailingPunctuation(trimmed);
+    if (split) {
+        const translated = agText.get(split.core);
+        if (translated) {
+            let punctuation = split.punctuation;
+            for (const [from, to] of Object.entries(agPunctuation)) {
+                if (punctuation.includes(from)) {
+                    punctuation = punctuation.split(from).join(to);
+                }
+            }
+            if (agPunctuationSkip.some((suffix) => translated.endsWith(suffix))) {
+                return agSpliceLiteral(value, trimmed, translated);
+            }
+            return agSpliceLiteral(value, trimmed, translated + punctuation);
+        }
+    }
+    return value;
+}
+
+// ---------------------------------------------------------------------------
+// DOM traversal layer. Locale neutral: it decides *where* text may be replaced
+// and defers *what* to translateString() above.
+// ---------------------------------------------------------------------------
+function isSkippableElement(element) {
+    // isContentEditable covers inherited editability plus values such as an
+    // empty attribute or "plaintext-only". Matching only
+    // [contenteditable="true"] can rewrite text the user is actively editing.
+    return Boolean(element?.isContentEditable || element?.closest?.(agSkipSelector));
+}
+function shouldTranslateTextNode(node) {
+    const parent = node.parentElement;
+    if (!parent || isSkippableElement(parent)) {
+        return false;
+    }
+    if (parent.tagName === 'INPUT' || parent.tagName === 'TEXTAREA') {
+        return false;
+    }
+    const trimmed = node.nodeValue?.trim();
+    if (!trimmed || !hasTranslation(trimmed)) {
+        return false;
+    }
+    return true;
+}
+function translateAttributes(root) {
+    if (root.nodeType !== Node.ELEMENT_NODE) {
+        return;
+    }
+    const element = root;
+    // Editable/code content is intentionally skipped for text nodes, but its
+    // accessibility labels are UI chrome and can still be translated safely.
+    if (element.matches('script, style')) {
+        return;
+    }
+    for (const attr of agAttributeNames) {
+        if (element.hasAttribute(attr)) {
+            const current = element.getAttribute(attr);
+            const next = translateString(current);
+            if (next !== current) {
+                element.setAttribute(attr, next);
+            }
+        }
+    }
+}
+function translateNode(root) {
+    if (!root) {
+        return;
+    }
+    if (root.nodeType === Node.TEXT_NODE) {
+        if (shouldTranslateTextNode(root)) {
+            const next = translateString(root.nodeValue);
+            if (next !== root.nodeValue) {
+                root.nodeValue = next;
+            }
+        }
+        return;
+    }
+    if (root.nodeType !== Node.ELEMENT_NODE) {
+        return;
+    }
+    if (isSkippableElement(root)) {
+        // Preserve user-editable/code text, while still localizing its own
+        // labels when the element is inserted with attributes already set.
+        translateAttributes(root);
+        return;
+    }
+    translateAttributes(root);
+    const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT | NodeFilter.SHOW_ELEMENT, {
+        acceptNode(node) {
+            if (node.nodeType === Node.ELEMENT_NODE && isSkippableElement(node)) {
+                // Skip editable/code descendants, but keep the element's UI
+                // attributes (for example, an editor aria-label) localized.
+                translateAttributes(node);
+                return NodeFilter.FILTER_REJECT;
+            }
+            return NodeFilter.FILTER_ACCEPT;
+        },
+    });
+    let node = walker.nextNode();
+    while (node) {
+        if (node.nodeType === Node.TEXT_NODE) {
+            if (shouldTranslateTextNode(node)) {
+                const next = translateString(node.nodeValue);
+                if (next !== node.nodeValue) {
+                    node.nodeValue = next;
+                }
+            }
+        }
+        else {
+            translateAttributes(node);
+        }
+        node = walker.nextNode();
+    }
+}
+function installLocalePatch() {
+    document.documentElement.setAttribute('lang', AG_LOCALE.htmlLang || AG_LOCALE.language);
+    // Right-to-left scripts need the document direction as well; without it a
+    // fully translated RTL UI still lays out left-to-right.
+    if (AG_LOCALE.dir) {
+        document.documentElement.setAttribute('dir', AG_LOCALE.dir);
+    }
+    translateNode(document.documentElement);
+    const observer = new MutationObserver((mutations) => {
+        for (const mutation of mutations) {
+            if (mutation.type === 'characterData') {
+                translateNode(mutation.target);
+            }
+            else if (mutation.type === 'attributes') {
+                translateAttributes(mutation.target);
+            }
+            else {
+                mutation.addedNodes.forEach(translateNode);
+            }
+        }
+    });
+    observer.observe(document.documentElement, {
+        childList: true,
+        subtree: true,
+        characterData: true,
+        attributes: true,
+        attributeFilter: agAttributeNames,
+    });
+}
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', installLocalePatch, { once: true });
+}
+else {
+    installLocalePatch();
+}
+/* antigravity-i18n:end */

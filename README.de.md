@@ -1,120 +1,131 @@
 # antigravity-i18n
 
-[English](./README.md) | [简体中文](./README.zh-CN.md) | [繁體中文](./README.zh-Hant.md) | [日本語](./README.ja.md) | [한국어](./README.ko.md) | [Español](./README.es.md) | Deutsch | [Français](./README.fr.md) | [Português do Brasil](./README.pt-BR.md) | [Русский](./README.ru.md)
 
-Installiere mit einem einzigen Befehl ein UI-Sprachpaket in der Desktop-App [Google Antigravity](https://antigravity.google/) und stelle jederzeit die offizielle Version bytegenau wieder her.
+UI-Lokalisierungstool für den Google Antigravity-Desktop-Client.
 
-![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20Linux%20%7C%20macOS-blue?style=flat-square)
-![License](https://img.shields.io/badge/license-MIT-green?style=flat-square)
-![Node](https://img.shields.io/badge/node-%3E%3D16-brightgreen?style=flat-square)
 
----
+[简体中文](./README.zh-CN.md) | [English](./README.md) | [繁體中文](./README.zh-Hant.md) | [日本語](./README.ja.md) | [한국어](./README.ko.md) | **Deutsch** | [Español](./README.es.md) | [Français](./README.fr.md) | [Português (Brasil)](./README.pt-BR.md) | [Русский](./README.ru.md)
 
-## Funktionen
+## Projektstatus und Plattformunterstützung
 
-- **Keine dauerhafte Installation**: Direkt mit einem einzigen `npx`-Befehl ausführen. Installationspfad und Neustart der App werden automatisch erledigt.
-- **Mehrsprachig**: Alle Sprachdaten liegen in JSON-Paketen unter `src/locales/`. Die Übersetzungs-Engine selbst enthält keine sprachspezifischen Daten. Chinesisch (vereinfacht), Chinesisch (traditionell), Japanisch, Koreanisch, Spanisch, Deutsch, Französisch, brasilianisches Portugiesisch und Russisch sind enthalten.
-- **Nicht invasiv**: Nur die App-Oberfläche, native Menüs und der native Dialog zur Bestätigung des Beendens werden übersetzt. Code-Editor (Monaco), Terminal (xterm) und Unterhaltungsbereiche bleiben unverändert.
-- **Bytegenaue Wiederherstellung**: Beim ersten Lauf wird die originale `app.asar` gesichert. `restore` stellt das offizielle Archiv unverändert wieder her.
-- **Offline und privat**: Keine Netzwerkanfragen, keine Telemetrie und kein Zugriff auf Tokens, Sitzungen oder Zugangsdaten.
-- **Pluralformen und Schreibrichtung**: Mengenabhängige Texte verwenden CLDR-Pluralformen über `Intl.PluralRules`; Sprachen mit Schreibrichtung von rechts nach links können ihre Richtung deklarieren.
+Dieses Repository ist der Hauptort für die weitere Entwicklung. Der aktuelle Branch `main` enthält die Go/Wails-v3-Anwendung und unterstützt derzeit **nur Windows**. Die ältere plattformübergreifende Node.js/npm-Implementierung bleibt separat im [Branch legacy-node](https://github.com/wade19990814-hue/antigravity-i18n/tree/legacy-node) erhalten; ihre v1/v2-Tags und Releases bleiben unverändert.
 
 ---
 
-## Verwendung
+Eine eigenständige ausführbare Datei, die eine moderne grafische Benutzeroberfläche, eine reine Go-Asar-Engine und vollständige Sprachpakete bündelt. Läuft sofort ohne Abhängigkeiten von Node.js oder Laufzeitbibliotheken und unterstützt jederzeit eine bytegenaue Wiederherstellung des offiziellen Builds.
 
-Erfordert Node.js 16 oder neuer.
+---
 
-### Schnellstart
+## Hauptmerkmale
 
-```bash
-# Deutsch anwenden
-npx antigravity-i18n apply --locale de
+- **Einzelne eigenständige Binärdatei**: ~12 MB eigenständige ausführbare Datei – keine Node.js-, npm- oder Python-Laufzeit erforderlich.
+- **GUI- und CLI-Dual-Modus**: Öffnet standardmäßig ein sauberes Desktop-Fenster und bettet gleichzeitig vollständige CLI-Unterbefehle („apply“ / „restore“ / „status“ / „locales“) für Skripterstellung und Automatisierung ein.
+- **Bytegenaue Wiederherstellung**: Erstellt automatisch ein makelloses Backup („app.asar.clean-backup“), bevor Änderungen vorgenommen werden. Beim Wiederherstellen wird ein Archiv wiederhergestellt, das Byte für Byte mit der offiziellen Version identisch ist (SHA-256-verifiziert).
+- **Nicht-invasives Design**: Lokalisiert nur die Shell-Benutzeroberfläche, native Menüs und Beenden-Dialoge. Code-Editoren (Monaco), integrierte Terminals (xterm) und KI-Konversationsströme bleiben strikt unberührt.
+- **Offline und zuverlässig**: Keine Netzwerkaktivität, keine Datenerfassung. Ausgestattet mit einer JavaScript-Syntaxvalidierung im Voraus und einem Transaktions-Rollback bei unerwarteten Fehlern.
 
-# 简体中文: npx antigravity-i18n apply --locale zh-CN
-# 繁體中文: npx antigravity-i18n apply --locale zh-Hant
-# 日本語: npx antigravity-i18n apply --locale ja
-# 한국어: npx antigravity-i18n apply --locale ko
-# Español: npx antigravity-i18n apply --locale es
-# Français: npx antigravity-i18n apply --locale fr
-# Português do Brasil: npx antigravity-i18n apply --locale pt-BR
-# Русский: npx antigravity-i18n apply --locale ru
+---
 
-# Offizielle Version wiederherstellen
-npx antigravity-i18n restore
+## Download und Nutzung
 
-# Aktive Sprache und Sicherungen anzeigen
-npx antigravity-i18n status
+### Herunterladen
 
-# Enthaltene Sprachpakete auflisten
-npx antigravity-i18n locales
+Laden Sie die neueste „antigravity-i18n.exe“ von der Seite „Releases“ herunter und führen Sie sie direkt aus.
+
+### 1. Grafische Oberfläche (empfohlen)
+
+Doppelklicken Sie auf „antigravity-i18n.exe“:
+1. Die App erkennt den Antigravity-Installationsordner automatisch (oder klicken Sie auf „Speicherort ändern“, um ihn manuell anzugeben).
+2. Klicken Sie auf Ihre bevorzugte Sprache (durch Auswahl von Englisch wird die offizielle Version wiederhergestellt).
+3. Klicken Sie auf „Übernehmen“; Das Tool bestätigt die Beendigung des Prozesses, aktualisiert die Ressourcen und startet Antigravity neu.
+
+### 2. Befehlszeilenschnittstelle
+
+Die gleiche Binärdatei kann vom Terminal aus aufgerufen werden:
+
+```powershell
+# Check current localization status and backups
+antigravity-i18n.exe status
+
+# Install a language pack (Simplified Chinese by default)
+antigravity-i18n.exe apply --locale zh-CN
+
+# Restore the official untranslated English version
+antigravity-i18n.exe restore
+
+# List all bundled language packs with coverage
+antigravity-i18n.exe locales
 ```
 
-`zh` ist die Kurzform von `apply --locale zh-CN`, `en` die Kurzform von `restore`.
+Häufige Optionen:
+- `--app-dir <Pfad>`: Geben Sie das Antigravity-Installationsverzeichnis manuell an (oder legen Sie es über `ANTIGRAVITY_APP_DIR` fest).
+- `--locale <code>`: Zielsprachencode (z. B. `zh-CN`, `zh-Hant`, `ja`, `ko`, `de`, `es`, `fr`).
+- „--no-restart“: Antigravity nach dem Patchen nicht neu starten.
+- „--force“: Überspringen Sie die 30-sekündige Wartezeit beim ordnungsgemäßen Herunterfahren und beenden Sie Prozesse sofort.
+- „--yes“: Unterdrückt die Bestätigungsaufforderung zum Herunterfahren.
 
-### Aus dem Quellcode ausführen
+---
 
-```bash
+## Gebündelte Sprachen
+
+Alle Sprachpakete sind direkt in die ausführbare Datei eingebettet:
+
+| Code | Sprache | Abdeckung | Hinweise |
+| :--- | :--- | :--- | :--- |
+| `zh-CN` | Simplified Chinese (简体中文) | 100% | Vollständige Abdeckung der Benutzeroberfläche, Menüs und Dialoge |
+| `zh-Hant` | Traditional Chinese (繁體中文) | 100% | Vollständige Abdeckung mit verifizierten Fachbegriffen |
+| `ja` | Japanese (日本語) | 100% | Vollständige Abdeckung mit verifizierten Fachbegriffen |
+| `ko` | Korean (한국어) | 100% | Vollständige Abdeckung mit verifizierten Fachbegriffen |
+| `de` | German (Deutsch) | 100% | Vollständige Abdeckung mit verifizierten Fachbegriffen |
+| `es` | Spanish (Español) | 100% | Vollständige Abdeckung mit verifizierten Fachbegriffen |
+| `fr` | French (Français) | 100% | Vollständige Abdeckung mit verifizierten Fachbegriffen |
+| `pt-BR` | Portuguese (Brasil) | 100% | Vollständige Abdeckung mit verifizierten Fachbegriffen |
+| `ru` | Russian (Русский) | 100% | Vollständige Abdeckung mit verifizierten Fachbegriffen |
+| `en` | English | - | Offizieller Original-Build (zum Wiederherstellen auswählen) |
+
+---
+
+## FAQ & Mechanik
+
+### 1. Was passiert nach einem offiziellen Antigravity-Update?
+Offizielle Updates überschreiben „app.asar“. Öffnen Sie einfach dieses Tool erneut und klicken Sie erneut auf „Übernehmen“. Das Tool aktualisiert sein sauberes Backup automatisch mit der neuen offiziellen Version.
+
+### 2. Sprachumschaltung und Wiederherstellung
+Sie können direkt zwischen jeder Sprache wechseln; Das Tool ersetzt aktive Patches nahtlos, ohne dass zunächst eine manuelle Wiederherstellung erforderlich ist. Durch Klicken auf „Offizielles Englisch wiederherstellen“ kann der Client jederzeit in einen unberührten Zustand zurückversetzt werden.
+
+### 3. Verwaltung der Sicherungsdateien
+- „app.asar.clean-backup“: Das makellose offizielle Backup, das für die Wiederherstellung erforderlich ist. Nicht manuell löschen.
+- `app.asar.bak-*`: Historische Snapshots mit Zeitstempel links neben dem Archiv. Sobald Ihre aktuelle Installation als stabil bestätigt wurde, können Sie diese Dateien bedenkenlos löschen, um Speicherplatz freizugeben.
+
+---
+
+## Bauen aus der Quelle
+
+**Voraussetzungen**:
+- Gehen Sie 1,26+
+- [Wails v2](https://wails.io/) CLI
+
+```powershell
+# Clone the repository
 git clone https://github.com/wade19990814-hue/antigravity-i18n.git
 cd antigravity-i18n
-npm install
-node bin/cli.js apply --locale de
+
+# Build both GUI and CLI binaries
+.\build.ps1
+
+# Run tests (including end-to-end asar verification)
+$env:ANTIGRAVITY_ASAR = "$env:LOCALAPPDATA\Programs\antigravity\resources\app.asar.clean-backup"
+go test ./...
 ```
-
-### Optionen
-
-```text
-Commands:
-  apply             Sprachpaket installieren (Auswahl mit --locale)
-  restore           Offizielle unübersetzte Version wiederherstellen
-  status            Aktive Sprache und App-Pfad anzeigen
-  locales           Enthaltene Sprachpakete auflisten
-
-Options:
-  --app-dir <path>  Installationspfad von Antigravity
-  --locale <code>   Zu installierendes Sprachpaket (Standard: zh-CN)
-  --no-restart      Antigravity nach dem Patchen nicht neu starten
-  --no-kill         Antigravity muss bereits beendet sein; Prozess niemals beenden
-  --force           App sofort beenden, ohne auf einen sauberen Abschluss zu warten
-  -h, --help        Hilfe anzeigen
-  -v, --version     Version anzeigen
-```
-
----
-
-## Hinweise
-
-1. **Arbeit speichern**: Das Werkzeug wartet bis zu 30 Sekunden, damit die App ihren Zustand speichern und sauber beendet werden kann. Speichere vorher alle offenen Arbeiten. Läuft die App nach 30 Sekunden noch, wird sie zwangsweise beendet; `--force` überspringt die Wartezeit.
-2. **Offizielle Updates**: Ein Antigravity-Update überschreibt `app.asar`. Führe danach `apply` erneut aus. Ändert sich das Archiv während apply/restore, wird der Vorgang abgebrochen. Warte auf den Abschluss des Updates und führe den Befehl erneut aus.
-3. **Sicherungsdateien**: Beim ersten Lauf wird `app.asar.clean-backup` im Verzeichnis `resources` erstellt. Nach einem offiziellen Update wird sie automatisch aus dem aktuellen unveränderten Archiv erneuert. Lösche sie nicht manuell. Bei jedem apply/restore wird zusätzlich ein Zeitstempel-Snapshot `app.asar.bak-*` daneben abgelegt, und diese häufen sich mit der Zeit an. Für die Wiederherstellung genügt `app.asar.clean-backup`; sobald sich die aktuelle Installation bewährt hat, kannst du ältere Snapshots löschen, um Speicherplatz freizugeben. `status` prüft Archivstruktur, vorhandene Integritätsprüfsummen, Patch-Markierungen und Version. Ungültige oder nicht zur Version passende Sicherungen werden nicht als wiederherstellbar angezeigt.
-4. **Sprache wechseln**: Ein anderes Sprachpaket ersetzt das aktive Paket direkt. Ein vorheriges `restore` ist nicht nötig.
-
----
-
-## Mitwirken
-
-Korrekturen und neue Sprachpakete sind willkommen. Die Wörterbuchschlüssel sind die unübersetzten englischen UI-Texte; das enthaltene Referenzpaket dient daher zugleich als Inventar für neue Sprachen.
-
-```bash
-# Alle zu übersetzenden englischen Texte ausgeben
-node scripts/locale-report.js --keys
-
-# Abdeckung, fehlende Einträge und unübersetzte Platzhalter anzeigen
-node scripts/locale-report.js
-```
-
-Das Paketformat ist in [CONTRIBUTING.md](./CONTRIBUTING.md) beschrieben. Führe vor einem Pull Request `npm test` aus.
 
 ---
 
 ## Haftungsausschluss
 
-1. Verwende dieses Projekt nur, soweit dies nach geltendem Recht, Verträgen und den Antigravity-Nutzungsbedingungen zulässig ist. Für die Einhaltung dieser Vorgaben bist du selbst verantwortlich.
-2. Dieses unabhängige Open-Source-Werkzeug ist nicht mit Google verbunden und wird von Google weder unterstützt noch autorisiert. Antigravity und zugehörige Marken gehören ihren jeweiligen Rechteinhabern.
-3. Änderungen am Client erfolgen auf eigenes Risiko. Die Autoren übernehmen keine Verantwortung für unerwartete Probleme, Datenverlust oder andere Folgen.
-
----
+1. Dies ist ein inoffizielles, von der Community gepflegtes Projekt und steht in keiner Verbindung zu Google oder Antigravity, wird von diesen nicht unterstützt oder autorisiert.
+2. Google Antigravity und zugehörige Marken gehören ihren jeweiligen Eigentümern.
+3. Dieses Tool wird für den persönlichen und pädagogischen Gebrauch bereitgestellt. Bitte stellen Sie sicher, dass Sie die entsprechenden Software-Nutzungsbedingungen einhalten.
 
 ## Lizenz
 
-[MIT](./LICENSE)
+[MIT-Lizenz](./LICENSE)

@@ -1,119 +1,131 @@
 # antigravity-i18n
 
-[English](./README.md) | 简体中文 | [繁體中文](./README.zh-Hant.md) | [日本語](./README.ja.md) | [한국어](./README.ko.md) | [Español](./README.es.md) | [Deutsch](./README.de.md) | [Français](./README.fr.md) | [Português do Brasil](./README.pt-BR.md) | [Русский](./README.ru.md)
+适用于 [Google Antigravity](https://antigravity.google/) 桌面客户端的多语言本地化工具。
 
-一行命令为 [Google Antigravity](https://antigravity.google/) 桌面端安装界面语言包，并支持随时按字节还原官方版本。
+**简体中文** | [English](./README.md) | [繁體中文](./README.zh-Hant.md) | [日本語](./README.ja.md) | [한국어](./README.ko.md) | [Deutsch](./README.de.md) | [Español](./README.es.md) | [Français](./README.fr.md) | [Português (Brasil)](./README.pt-BR.md) | [Русский](./README.ru.md)
 
-![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20Linux%20%7C%20macOS-blue?style=flat-square)
-![License](https://img.shields.io/badge/license-MIT-green?style=flat-square)
-![Node](https://img.shields.io/badge/node-%3E%3D16-brightgreen?style=flat-square)
+## 项目状态与平台支持
 
----
-
-## 特性
-
-- **免安装**：一条 `npx` 命令直接运行，自动识别安装路径并重启应用。
-- **多语言**：语言数据全部位于 `src/locales/` 下的 JSON 语言包中，翻译引擎本身不含任何语言内容，新增语言即新增一个文件。简体中文、繁體中文、日本語、한국어、Español、Deutsch、Français、Português do Brasil、Русский 已内置。
-- **非侵入**：仅翻译外壳界面、原生菜单与原生退出确认框，代码编辑器（Monaco）、终端（xterm）与对话区域完全不动。
-- **字节级还原**：首次运行会备份原始 `app.asar`，`restore` 可将官方归档原样放回。
-- **离线且私有**：无网络请求、无遥测，不接触 token、会话或任何凭据。
-- **复数与书写方向**：带计数的字符串通过 `Intl.PluralRules` 选择 CLDR 复数形式；从右向左书写的语言必须声明书写方向。
+本仓库是后续开发的主仓库。当前 `main` 分支为 Go/Wails v3 版本，现阶段**仅支持 Windows**。旧版跨平台 Node.js/npm 实现单独保留在 [legacy-node 分支](https://github.com/wade19990814-hue/antigravity-i18n/tree/legacy-node)，原有 v1/v2 标签和发行版保持不变。
 
 ---
 
-## 使用
+单个可执行文件集成现代化图形界面、纯 Go 实现的 asar 读写引擎与完整语言包；无需安装 Node.js 或任何运行库，解压即用，并支持随时按字节原样还原为官方原版。
 
-需要 Node.js（≥16）。
+---
 
-### 快速开始
+## 核心特性
 
-```bash
-# 安装语言包（默认简体中文）
-npx antigravity-i18n apply --locale zh-CN
-# 繁體中文: npx antigravity-i18n apply --locale zh-Hant
-# 日本語: npx antigravity-i18n apply --locale ja
-# 한국어: npx antigravity-i18n apply --locale ko
-# Español: npx antigravity-i18n apply --locale es
-# Deutsch: npx antigravity-i18n apply --locale de
-# Français: npx antigravity-i18n apply --locale fr
-# Português do Brasil: npx antigravity-i18n apply --locale pt-BR
-# Русский: npx antigravity-i18n apply --locale ru
+- **单文件免安装**：约 12 MB 独立绿色程序，无需配置 Node.js、npm 或 Python 环境，开箱即用。
+- **图形与命令行双支持**：默认启动直观易用的图形界面，同时内嵌完整命令行子命令（`apply` / `restore` / `status` / `locales`），兼顾日常使用与脚本自动化。
+- **字节级原样还原**：首次修改前自动保存官方原始归档（`app.asar.clean-backup`）；执行还原后，`app.asar` 与官方发布的初始文件 SHA-256 哈希完全一致。
+- **非侵入式设计**：仅本地化外壳 UI、原生系统菜单与退出确认框；代码编辑器（Monaco）、集成终端（xterm）与 AI 对话区域完全保持原生，不触碰任何用户数据。
+- **离线与高可靠**：全流程零网络请求、零数据上传；内置脚本语法合法性门禁与全流程事务控制，遇到异常自动安全回滚。
 
-# 还原官方版本
-npx antigravity-i18n restore
+---
 
-# 查看当前语言与备份状态
-npx antigravity-i18n status
+## 下载与使用
 
-# 查看内置的语言包
-npx antigravity-i18n locales
+### 下载运行
+
+前往项目的 [Releases](../../releases) 页面，下载最新版本的 `antigravity-i18n.exe` 即可直接使用。
+
+### 1. 图形界面（推荐）
+
+双击运行 `antigravity-i18n.exe`：
+1. 程序会自动检测 Antigravity 的安装目录（若未检测到，可点击“更改位置”手动选择）。
+2. 在语言列表中点击选中目标语言（选中 **English** 即为还原官方原版）。
+3. 点击“应用”按钮；工具在确认关闭程序后自动改写资源并重启 Antigravity。
+
+### 2. 命令行模式
+
+同一可执行文件也可直接在终端中调用：
+
+```powershell
+# 查看当前本地化状态与备份信息
+antigravity-i18n.exe status
+
+# 安装指定语言包（默认简体中文）
+antigravity-i18n.exe apply --locale zh-CN
+
+# 随时还原为官方英文原版
+antigravity-i18n.exe restore
+
+# 查看所有内置语言包及其覆盖率
+antigravity-i18n.exe locales
 ```
 
-`zh` 是 `apply --locale zh-CN` 的简写，`en` 是 `restore` 的简写。
+常用参数：
+- `--app-dir <path>`：手动指定 Antigravity 安装路径（亦可通过环境变量 `ANTIGRAVITY_APP_DIR` 设置）。
+- `--locale <code>`：指定语言代码，如 `zh-CN`、`zh-Hant`、`ja`、`ko`、`de`、`es`、`fr` 等。
+- `--no-restart`：完成改写后不自动重启客户端。
+- `--force`：跳过 30 秒优雅退出等待，直接结束 Antigravity 进程。
+- `--yes`：静默确认进程关闭提示。
 
-### 从源码运行
+---
 
-```bash
+## 内置语言支持
+
+所有语言包均已内嵌于二进制中，无需额外下载：
+
+| 语言代码 | 语言名称 | 翻译覆盖度 | 说明 |
+| :--- | :--- | :--- | :--- |
+| `zh-CN` | 简体中文 | 100% | 完整覆盖界面外壳、原生菜单与退出弹窗 |
+| `zh-Hant` | 繁體中文 | 100% | 完整覆盖，标准繁体计算机术语 |
+| `ja` | 日本語 | 100% | 完整覆盖，专业 IDE 术语核对与对齐 |
+| `ko` | 한국어 | 100% | 完整覆盖，专业 IDE 术语核对与对齐 |
+| `de` | Deutsch | 100% | 完整覆盖，专业 IDE 术语核对与对齐 |
+| `es` | Español | 100% | 完整覆盖，专业 IDE 术语核对与对齐 |
+| `fr` | Français | 100% | 完整覆盖，专业 IDE 术语核对与对齐 |
+| `pt-BR` | Português (Brasil) | 100% | 完整覆盖，专业 IDE 术语核对与对齐 |
+| `ru` | Русский | 100% | 完整覆盖，专业 IDE 术语核对与对齐 |
+| `en` | English | - | 官方原版英文（选中即执行还原） |
+
+---
+
+## 机制与常见问题
+
+### 1. Antigravity 官方更新后失效？
+Antigravity 自动更新会覆盖 `app.asar`。官方更新完成后，重新打开本工具点击一次“应用”即可重新生效；工具会自动基于新版文件刷新干净备份。
+
+### 2. 语言切换与还原
+不同语言之间可以直接点击切换，工具会自动替换现有补丁，无需先手动执行还原。任何时候点击“还原为官方英文”均可恢复至纯净状态。
+
+### 3. 备份文件说明
+- `app.asar.clean-backup`：官方纯净归档备份，是执行“还原”的核心依赖，**请勿手动删除**。
+- `app.asar.bak-*`：每次操作留下的时间戳快照。当确认当前软件运行无误后，可手动清理这些时间戳文件以释放磁盘空间。
+
+---
+
+## 源码构建
+
+如需自行编译：
+
+**依赖环境**：
+- Go 1.26+
+- [Wails v2](https://wails.io/) CLI
+
+```powershell
+# 克隆仓库
 git clone https://github.com/wade19990814-hue/antigravity-i18n.git
 cd antigravity-i18n
-npm install
-node bin/cli.js apply --locale zh-CN
+
+# 完整构建（同时产出 GUI 与 CLI）
+.\build.ps1
+
+# 运行自动化测试（包含真实 asar 还原闭环验证）
+$env:ANTIGRAVITY_ASAR = "$env:LOCALAPPDATA\Programs\antigravity\resources\app.asar.clean-backup"
+go test ./...
 ```
-
-### 参数说明
-
-```text
-Commands:
-  apply             安装语言包（用 --locale 指定）
-  restore           还原未翻译的官方版本
-  status            显示当前语言与安装路径
-  locales           列出内置语言包
-
-Options:
-  --app-dir <path>  指定 Antigravity 安装路径
-  --locale <code>   要安装的语言包（默认 zh-CN）
-  --no-restart      打补丁后不自动重启
-  --no-kill         要求应用已关闭，绝不终止进程
-  --force           跳过优雅等待，直接终止应用
-  -h, --help        显示帮助
-  -v, --version     显示版本
-```
-
----
-
-## 注意事项
-
-1. **先保存工作**：工具最多等待 30 秒让应用自行退出并保存状态，运行前请先保存未完成的内容。 超时仍在运行时会强制关闭；`--force` 会跳过等待。
-2. **官方版本更新**：Antigravity 自动更新后会覆盖 `app.asar`，更新完成后重新执行一次 `apply` 即可。 如果安装或还原期间归档发生变化，操作会停止；请等待更新完成后重新执行。
-3. **备份文件**：首次运行会在 `resources` 目录生成 `app.asar.clean-backup`；官方更新后它会依据当前未打补丁的归档自动刷新，请勿手动删除。每次 apply/restore 还会在旁边留下一份带时间戳的 `app.asar.bak-*` 快照，并随运行次数不断累积；还原只依赖 `app.asar.clean-backup`，确认当前安装稳定后可删除旧快照释放空间。 `status` 会检查归档结构、已有完整性校验值、补丁标记及版本，不会将损坏或版本不匹配的备份显示为可还原。
-4. **切换语言**：安装另一个语言包会直接替换原有的，中间不需要先 `restore`。
-
----
-
-## 参与贡献
-
-欢迎补充词条，也欢迎提交新的语言包。词表的键就是未翻译的英文界面文本，因此内置语言包同时也是新语言的对照清单：
-
-```bash
-# 打印语言包需要覆盖的全部英文原文
-node scripts/locale-report.js --keys
-
-# 查看覆盖率、缺失词条与未翻译的占位内容
-node scripts/locale-report.js
-```
-
-语言包格式详见 [CONTRIBUTING.md](./CONTRIBUTING.md)，提交 PR 前请运行 `npm test`。
 
 ---
 
 ## 免责声明
 
-1. 仅可在适用法律、合同及 Antigravity 使用条款允许的范围内使用本项目，使用者应自行确保使用方式合规。
-2. 本项目为独立开源工具，与 Google 无隶属、背书或授权关系。Antigravity 及相关商标归其各自所有者所有。
-3. 修改客户端存在风险，请自行判断后使用。作者不对由此产生的异常、数据丢失或其他后果承担责任。
+1. 本项目为开源社区维护的非官方本地化工具，与 Google 或 Antigravity 官方无关。
+2. Antigravity 及相关商标版权归原权利人所有。
+3. 本工具仅供学习交流及个人使用，请在遵循相关软件使用协议的前提下合理使用。
 
----
+## 开源协议
 
-## 许可
-
-[MIT](./LICENSE)
+[MIT License](./LICENSE)

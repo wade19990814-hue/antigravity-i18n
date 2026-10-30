@@ -1,7 +1,0 @@
-# Normalize text files to LF in the repository; the project is consumed on
-# Linux and macOS as well, where CRLF checkouts cause trouble.
-* text=auto eol=lf
-
-# Treat archives and images as binary if they ever get added.
-*.asar binary
-*.png binary

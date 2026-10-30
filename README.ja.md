@@ -1,120 +1,131 @@
 # antigravity-i18n
 
-[English](./README.md) | [简体中文](./README.zh-CN.md) | [繁體中文](./README.zh-Hant.md) | 日本語 | [한국어](./README.ko.md) | [Español](./README.es.md) | [Deutsch](./README.de.md) | [Français](./README.fr.md) | [Português do Brasil](./README.pt-BR.md) | [Русский](./README.ru.md)
 
-1つのコマンドで [Google Antigravity](https://antigravity.google/) デスクトップアプリにUI言語パックを適用し、いつでも公式版へバイト単位で復元できます。
+[Google Antigravity](https://antigravity.google/) デスクトップ クライアント用の UI ローカリゼーション ツール。
 
-![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20Linux%20%7C%20macOS-blue?style=flat-square)
-![License](https://img.shields.io/badge/license-MIT-green?style=flat-square)
-![Node](https://img.shields.io/badge/node-%3E%3D16-brightgreen?style=flat-square)
 
----
+[简体中文](./README.zh-CN.md) | [English](./README.md) | [繁體中文](./README.zh-Hant.md) | **日本語** | [한국어](./README.ko.md) | [Deutsch](./README.de.md) | [Español](./README.es.md) | [Français](./README.fr.md) | [Português (Brasil)](./README.pt-BR.md) | [Русский](./README.ru.md)
 
-## 特長
+## プロジェクトの状況と対応プラットフォーム
 
-- **インストール不要**：1つの `npx` コマンドで直接実行でき、インストール先の検出とアプリの再起動も自動で行います。
-- **多言語対応**：言語データはすべて `src/locales/` のJSONパックに分離されています。翻訳エンジン自体は特定の言語に依存しません。簡体字中国語、繁体字中国語、日本語、韓国語、スペイン語、ドイツ語、フランス語、ブラジルポルトガル語、ロシア語を内蔵しています。
-- **非侵襲的**：シェルUI、ネイティブメニュー、ネイティブの終了確認ダイアログだけを翻訳します。コードエディター（Monaco）、ターミナル（xterm）、会話領域には触れません。
-- **バイト単位の復元**：初回実行時に元の `app.asar` をバックアップし、`restore` で公式アーカイブを変更前の状態へ戻します。
-- **オフラインかつプライベート**：ネットワーク通信やテレメトリーはなく、トークン、セッション、認証情報にはアクセスしません。
-- **複数形と書字方向に対応**：数を含む文字列は `Intl.PluralRules` でCLDRの複数形を選択し、右から左へ書く言語は書字方向を宣言できます。
+今後の開発はこのリポジトリを中心に行います。現在の `main` ブランチは Go/Wails v3 版で、現時点では **Windows のみ対応**しています。従来のクロスプラットフォーム版 Node.js/npm 実装は [legacy-node ブランチ](https://github.com/wade19990814-hue/antigravity-i18n/tree/legacy-node)に独立して保存されており、既存の v1/v2 タグとリリースは変更しません。
 
 ---
 
-## 使い方
+最新のグラフィカル インターフェイス、純粋な Go asar エンジン、および完全な言語パックを内蔵したスタンドアロン実行可能ファイル。Node.js や外部ランタイム不要でそのまま動作し、いつでも公式ビルドへバイト単位で正確に復元できます。
 
-Node.js 16以上が必要です。
+---
 
-### クイックスタート
+## 主な機能
 
-```bash
-# 日本語を適用
-npx antigravity-i18n apply --locale ja
+- **単一ファイル・インストール不要**: 約 12 MB の独立した実行可能ファイル。Node.js、npm、Python 等の環境構築は一切不要です。
+- **GUI と CLI の両対応**: デフォルトで直感的なデスクトップ画面を起動。自動化やスクリプト向けに完全な CLI サブコマンド (`apply` / `restore` / `status` / `locales`) も内包しています。
+- **バイト単位の正確な復元**: 初回変更前に公式オリジナルのバックアップ (`app.asar.clean-backup`) を自動作成。復元後は公式アーカイブと SHA-256 ハッシュが完全に一致します。
+- **非侵入型設計**: シェル UI、ネイティブ メニュー、終了ダイアログのみを変更。コード エディター (Monaco)、ターミナル (xterm)、AI 会話ストリームは完全にオリジナルのまま保護されます。
+- **オフライン & 安全**: ネットワーク通信やデータ収集は一切行いません。JavaScript 構文検証とトランザクション ロールバックを備え、エラー時も安全に復元されます。
 
-# 簡体字中国語: npx antigravity-i18n apply --locale zh-CN
-# 繁體中文: npx antigravity-i18n apply --locale zh-Hant
-# 한국어: npx antigravity-i18n apply --locale ko
-# Español: npx antigravity-i18n apply --locale es
-# Deutsch: npx antigravity-i18n apply --locale de
-# Français: npx antigravity-i18n apply --locale fr
-# Português do Brasil: npx antigravity-i18n apply --locale pt-BR
-# Русский: npx antigravity-i18n apply --locale ru
+---
 
-# 公式版へ復元
-npx antigravity-i18n restore
+## ダウンロードと使用方法
 
-# 現在の言語とバックアップ状態を確認
-npx antigravity-i18n status
+### ダウンロード
 
-# 内蔵言語パックを一覧表示
-npx antigravity-i18n locales
+リポジトリの [Releases](../../releases) ページから最新の `antigravity-i18n.exe` をダウンロードして直接実行します。
+
+### 1. グラフィカル インターフェイス (推奨)
+
+`antigravity-i18n.exe` をダブルクリックします:
+1. Antigravity のインストール先フォルダーを自動検出します (未検出時は「場所の変更」をクリック)。
+2. 言語一覧から希望の言語を選択します (**English** を選択すると公式原版に復元)。
+3.「適用」をクリックすると、プロセスの安全な終了を確認した上でファイルを更新し、Antigravity を再起動します。
+
+### 2. コマンドライン モード
+
+同一のバイナリをターミナルから直接実行することも可能です:
+
+```powershell
+# Check current localization status and backups
+antigravity-i18n.exe status
+
+# Install a language pack (Simplified Chinese by default)
+antigravity-i18n.exe apply --locale zh-CN
+
+# Restore the official untranslated English version
+antigravity-i18n.exe restore
+
+# List all bundled language packs with coverage
+antigravity-i18n.exe locales
 ```
 
-`zh` は `apply --locale zh-CN`、`en` は `restore` の短縮形です。
+一般的なオプション:
+- `--app-dir <path>`: Antigravity のインストール ディレクトリを手動指定 (環境変数 `ANTIGRAVITY_APP_DIR` も利用可能)。
+- `--locale <code>`: 対象言語コード (`zh-CN`、`zh-Hant`、`ja`、`ko`、`de`、`es`、`fr` 等)。
+- `--no-restart`: 適用後に Antigravity を自動再起動しない。
+- `--force`: 30 秒の正常終了待機をスキップし、プロセスを強制終了。
+- `--yes`: 終了確認プロンプトに自動同意。
 
-### ソースから実行
+---
 
-```bash
+## 内蔵言語サポート
+
+すべての言語パックはバイナリに直接埋め込まれています:
+
+| コード | 言語 | カバレッジ | 説明 |
+| :--- | :--- | :--- | :--- |
+| `zh-CN` | Simplified Chinese (简体中文) | 100% | シェル UI、ネイティブ メニュー、およびダイアログの完全なカバレッジ |
+| `zh-Hant` | Traditional Chinese (繁體中文) | 100% | 検証済みの技術用語による完全なカバレッジ |
+| `ja` | Japanese (日本語) | 100% | 検証済みの技術用語による完全なカバレッジ |
+| `ko` | Korean (한국어) | 100% | 検証済みの技術用語による完全なカバレッジ |
+| `de` | German (Deutsch) | 100% | 検証済みの技術用語による完全なカバレッジ |
+| `es` | Spanish (Español) | 100% | 検証済みの技術用語による完全なカバレッジ |
+| `fr` | French (Français) | 100% | 検証済みの技術用語による完全なカバレッジ |
+| `pt-BR` | Portuguese (Brasil) | 100% | 検証済みの技術用語による完全なカバレッジ |
+| `ru` | Russian (Русский) | 100% | 検証済みの技術用語による完全なカバレッジ |
+| `en` | English | - | 公式の未変更ビルド (復元するにはこれを選択します) |
+
+---
+
+## 仕組みとよくある質問
+
+### 1. 公式アップデート後の対応
+公式アップデートにより `app.asar` が上書きされます。更新完了後、本ツールを再度開いて「適用」をクリックするだけで再有効化されます (ツールが自動的に新バージョン基準でバックアップを更新します)。
+
+### 2. 言語切り替えと復元
+異なる言語間は事前の復元なしに直接切り替え可能です。いつでも「公式英語に戻す」を選択して初期状態へ復元できます。
+
+### 3. バックアップ ファイルの管理
+- `app.asar.clean-backup`: 復元に不可欠な公式クリーン バックアップです。**手動で削除しないでください**。
+- `app.asar.bak-*`: 操作のたびに作成されるタイムスタンプ付きスナップショット。動作確認後は削除してディスク容量を解放して構いません。
+
+---
+
+## ソースからのビルド
+
+**必要な環境**:
+- Go 1.26+
+- [Wails v2](https://wails.io/) CLI
+
+```powershell
+# Clone the repository
 git clone https://github.com/wade19990814-hue/antigravity-i18n.git
 cd antigravity-i18n
-npm install
-node bin/cli.js apply --locale ja
+
+# Build both GUI and CLI binaries
+.\build.ps1
+
+# Run tests (including end-to-end asar verification)
+$env:ANTIGRAVITY_ASAR = "$env:LOCALAPPDATA\Programs\antigravity\resources\app.asar.clean-backup"
+go test ./...
 ```
-
-### オプション
-
-```text
-Commands:
-  apply             言語パックを適用（--locale で選択）
-  restore           未翻訳の公式版へ復元
-  status            現在の言語とアプリのパスを表示
-  locales           内蔵言語パックを一覧表示
-
-Options:
-  --app-dir <path>  Antigravity のインストール先
-  --locale <code>   適用する言語パック（既定値: zh-CN）
-  --no-restart      パッチ適用後にアプリを再起動しない
-  --no-kill         アプリが終了済みであることを要求し、プロセスを終了しない
-  --force           正常終了を待たず、直ちにアプリを終了する
-  -h, --help        ヘルプを表示
-  -v, --version     バージョンを表示
-```
-
----
-
-## 注意事項
-
-1. **作業を保存してください**：アプリが状態を保存して正常終了できるよう最大30秒待機します。実行前に未保存の作業を保存してください。 30秒後も実行中の場合は強制終了します。`--force` は待機を省略します。
-2. **公式アップデート**：Antigravityの更新により `app.asar` は上書きされます。更新後にもう一度 `apply` を実行してください。 適用・復元中にアーカイブが変わった場合は処理を中止します。更新の完了を待ってから再実行してください。
-3. **バックアップファイル**：初回実行時に `resources` 内へ `app.asar.clean-backup` を作成します。公式アップデート後は、現在の未変更アーカイブから自動更新されます。手動で削除しないでください。また、apply/restore のたびにタイムスタンプ付きの `app.asar.bak-*` スナップショットが隣に保存され、実行を重ねるごとに蓄積します。復元には `app.asar.clean-backup` だけで十分なため、現在のインストールが安定していることを確認できたら、古いスナップショットを削除して容量を確保できます。 `status` はアーカイブ構造、利用可能な整合性ハッシュ、パッチのマーカー、バージョンを確認し、破損したバックアップや異なるバージョンを復元可能とは表示しません。
-4. **言語の切り替え**：別の言語パックを適用すると、現在のパックを直接置き換えます。先に `restore` を実行する必要はありません。
-
----
-
-## コントリビューション
-
-訳語の修正や新しい言語パックの追加を歓迎します。辞書のキーは未翻訳の英語UI文字列であり、内蔵パックが新しい言語の原文一覧としても機能します。
-
-```bash
-# 翻訳対象の英語文字列をすべて表示
-node scripts/locale-report.js --keys
-
-# カバレッジ、欠落、未翻訳のプレースホルダーを確認
-node scripts/locale-report.js
-```
-
-パック形式は [CONTRIBUTING.md](./CONTRIBUTING.md) を参照し、Pull Requestを送る前に `npm test` を実行してください。
 
 ---
 
 ## 免責事項
 
-1. 適用される法令、契約、およびAntigravityの利用規約で認められる範囲でのみ本プロジェクトを使用してください。利用者は自身の使用が適法かつ適切であることを確認する責任を負います。
-2. 本プロジェクトは独立したオープンソースツールであり、Googleとの提携、承認、または許可を受けたものではありません。Antigravityおよび関連する商標は各権利者に帰属します。
-3. クライアントの変更は自己責任で行ってください。作者は、予期しない問題、データ損失、その他の結果について責任を負いません。
-
----
+1. 本プロジェクトはコミュニティにより保守される非公式ツールであり、Google または Antigravity 公式とは一切関係ありません。
+2. Google Antigravity および関連商標の著作権は各権利者に帰属します。
+3. 本ツールは学習・個人利用を目的として提供されます。関連する利用規約を遵守してご使用ください。
 
 ## ライセンス
 
-[MIT](./LICENSE)
+[MIT License](./LICENSE)
