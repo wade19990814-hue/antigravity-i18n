@@ -1,0 +1,85 @@
+name: Windows CI
+
+# Documentation-only changes do not need a Windows build.
+'on':
+  push:
+    branches: [main]
+    paths:
+      - '**/*.go'
+      - 'go.mod'
+      - 'go.sum'
+      - 'build.ps1'
+      - 'build/**'
+      - 'frontend/**'
+      - 'assets/**'
+      - 'testdata/**'
+      - 'VERSION'
+      - 'wails.json'
+      - '.github/workflows/windows-ci.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - '**/*.go'
+      - 'go.mod'
+      - 'go.sum'
+      - 'build.ps1'
+      - 'build/**'
+      - 'frontend/**'
+      - 'assets/**'
+      - 'testdata/**'
+      - 'VERSION'
+      - 'wails.json'
+      - '.github/workflows/windows-ci.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: windows-ci-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test-and-build:
+    name: Test and build Windows
+    runs-on: windows-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        shell: pwsh
+    env:
+      GOTOOLCHAIN: local
+    steps:
+      - name: Check out source
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+
+      - name: Set up Go from go.mod
+        uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6
+        with:
+          go-version-file: go.mod
+
+      - name: Verify dependencies
+        run: |
+          go mod download
+          if ($LASTEXITCODE -ne 0) { throw 'Dependency download failed' }
+          go mod verify
+          if ($LASTEXITCODE -ne 0) { throw 'Dependency verification failed' }
+
+      - name: Vet Go code
+        run: go vet ./...
+
+      - name: Run existing tests
+        # Synthetic fixtures run in CI. The four real-archive tests skip unless
+        # ANTIGRAVITY_ASAR points to a locally supplied Antigravity app.asar.
+        run: go test -count=1 -v ./...
+
+      - name: Install matching Wails CLI
+        run: |
+          $wailsVersion = go list -m -f '{{.Version}}' github.com/wailsapp/wails/v2
+          if ($LASTEXITCODE -ne 0) { throw 'Cannot resolve Wails version from go.mod' }
+          go install "github.com/wailsapp/wails/v2/cmd/wails@$wailsVersion"
+          if ($LASTEXITCODE -ne 0) { throw 'Wails installation failed' }
+
+      - name: Build GUI and CLI
+        run: .\build.ps1 -Target all
